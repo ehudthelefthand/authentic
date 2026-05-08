@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Authentic – Identity Wall</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <script src="/fingerprint.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #07070f; }
+    canvas { display: block; }
+    #ws-status {
+      position: fixed;
+      bottom: 12px;
+      right: 16px;
+      font-family: monospace;
+      font-size: 10px;
+      color: #1e293b;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div id="ws-status">●</div>
+
+  <button id="test-btn" onclick="testFill()" title="Test: fill all particles">test</button>
+  <button id="reset-btn" onclick="testReset()" title="Reset all particles">reset</button>
+
+  <style>
+    #test-btn, #reset-btn {
+      position: fixed;
+      bottom: 12px;
+      font-family: monospace;
+      font-size: 10px;
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #334155;
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 1px;
+    }
+    #test-btn  { left: 16px; }
+    #reset-btn { left: 64px; }
+    #test-btn:hover, #reset-btn:hover { color: #64748b; background: rgba(255,255,255,0.08); }
+  </style>
+
+  <script src="/display-v2.js"></script>
+  <script>
+    function testFill() {
+      // Queue all dark particles with random palette colors
+      for (let i = 0; i < states.length; i++) {
+        if (!states[i].litColor && states[i].progress === 0) {
+          const paletteIndex = Math.floor(Math.random() * 8);
+          const palette = getPalette(paletteIndex);
+          pendingActivations.push({ index: i, color: hexToRgb(palette[0]) });
+        }
+      }
+    }
+
+    function testReset() {
+      // Clear queue and reset all particles to dark
+      pendingActivations.length = 0;
+      for (let i = 0; i < states.length; i++) {
+        states[i].litColor = null;
+        states[i].progress = 0;
+        states[i].transitionFrom = [15, 18, 30];
+      }
+      totalLit = 0;
+    }
+  </script>
+</body>
+</html>

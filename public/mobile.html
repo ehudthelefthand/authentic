@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Authentic Camp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <script src="/fingerprint.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #07070f;
+      color: #e2e8f0;
+      font-family: 'Sarabun', sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 24px 40px;
+      overflow-x: hidden;
+    }
+
+    .header {
+      text-align: center;
+      padding: 36px 0 8px;
+    }
+
+    .camp-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .camp-name {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      background: linear-gradient(135deg, #f59e0b, #8b5cf6, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+
+    .camp-sub {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    /* Canvas section */
+    #canvas-wrap {
+      position: relative;
+      margin: 20px 0 16px;
+    }
+
+    #canvas-wrap canvas {
+      border-radius: 50%;
+      display: block;
+    }
+
+    .canvas-ring {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.08);
+      pointer-events: none;
+    }
+
+    /* Form */
+    .form-section {
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .input-label {
+      font-size: 13px;
+      color: #94a3b8;
+      align-self: flex-start;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 18px;
+      color: #f1f5f9;
+      outline: none;
+      transition: border-color 0.2s;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    input[type="text"]:focus {
+      border-color: rgba(139, 92, 246, 0.5);
+    }
+
+    input[type="text"]::placeholder {
+      color: #334155;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: #fff;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      letter-spacing: 0.5px;
+    }
+
+    .submit-btn:active { transform: scale(0.97); }
+    .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Success state */
+    .success-view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 16px;
+      padding-top: 20px;
+    }
+
+    .success-view.visible { display: flex; }
+
+    .success-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f1f5f9;
+      line-height: 1.4;
+    }
+
+    .success-sub {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+
+    .divider {
+      width: 32px;
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="camp-label">ค่ายโบถส์</div>
+    <div class="camp-name">AUTHENTIC</div>
+    <div class="camp-sub">สะท้อนพระคริสต์ด้วยชีวิตจริง</div>
+  </div>
+
+  <!-- Pre-submit view -->
+  <div id="main-view">
+    <div id="canvas-wrap">
+      <div class="canvas-ring"></div>
+    </div>
+
+    <div class="form-section">
+      <label class="input-label">ชื่อของคุณ</label>
+      <input type="text" id="name-input" placeholder="พิมพ์ชื่อที่นี่" autocomplete="off" maxlength="30" />
+      <button class="submit-btn" id="submit-btn" disabled>เป็นส่วนหนึ่งของค่าย ✦</button>
+    </div>
+  </div>
+
+  <!-- Post-submit view -->
+  <div class="success-view" id="success-view">
+    <div id="success-canvas-wrap"></div>
+    <div class="success-title" id="success-name"></div>
+    <div class="divider"></div>
+    <div class="success-sub">
+      fingerprint ของคุณปรากฏบนหน้าจอแล้ว<br/>
+      คุณเป็นส่วนหนึ่งของค่ายนี้ ✦
+    </div>
+  </div>
+
+  <script>
+    // ---- state ----
+    let currentParticleData = null;
+    let currentSeed = 0;
+    let currentPaletteIndex = 0;
+    let submitted = false;
+
+    function hashStr(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) {
+        h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+      }
+      return Math.abs(h);
+    }
+
+    // ---- p5 preview sketch ----
+    const PREVIEW_SIZE = 200;
+
+    const previewSketch = (p) => {
+      p.setup = () => {
+        const cnv = p.createCanvas(PREVIEW_SIZE, PREVIEW_SIZE);
+        cnv.parent('canvas-wrap');
+        p.frameRate(40);
+      };
+
+      p.draw = () => {
+        p.clear();
+        p.background(7, 7, 15);
+
+        if (!currentParticleData) {
+          // Idle: faint placeholder rings
+          p.noFill();
+          p.strokeWeight(0.5);
+          for (let r = 20; r < PREVIEW_SIZE / 2; r += 22) {
+            p.stroke(255, 255, 255, 10);
+            p.ellipse(PREVIEW_SIZE / 2, PREVIEW_SIZE / 2, r * 2, r * 1.4);
+          }
+          return;
+        }
+
+        const t = p.millis() / 1000;
+        drawFingerprint(
+          p,
+          PREVIEW_SIZE / 2, PREVIEW_SIZE / 2,
+          PREVIEW_SIZE * 0.88,
+          currentPaletteIndex,
+          currentParticleData.particles,
+          t,
+          1
+        );
+      };
+    };
+
+    new p5(previewSketch);
+
+    // ---- p5 success sketch ----
+    const SUCCESS_SIZE = 260;
+    let successParticleData = null;
+    let successPaletteIndex = 0;
+
+    const successSketch = (p) => {
+      p.setup = () => {
+        const cnv = p.createCanvas(SUCCESS_SIZE, SUCCESS_SIZE);
+        cnv.parent('success-canvas-wrap');
+        p.frameRate(40);
+      };
+
+      p.draw = () => {
+        p.clear();
+        p.background(7, 7, 15);
+        if (!successParticleData) return;
+        const t = p.millis() / 1000;
+        drawFingerprint(
+          p,
+          SUCCESS_SIZE / 2, SUCCESS_SIZE / 2,
+          SUCCESS_SIZE * 0.88,
+          successPaletteIndex,
+          successParticleData.particles,
+          t,
+          1
+        );
+      };
+    };
+
+    new p5(successSketch);
+
+    // ---- Input handling ----
+    const nameInput = document.getElementById('name-input');
+    const submitBtn = document.getElementById('submit-btn');
+
+    let debounceTimer = null;
+
+    nameInput.addEventListener('input', () => {
+      const name = nameInput.value.trim();
+      submitBtn.disabled = name.length < 1;
+
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (name.length > 0) {
+          const seed = hashStr(name + 'preview');
+          currentSeed = seed;
+          currentPaletteIndex = hashStr(name) % 8;
+          currentParticleData = generateFingerprintParticles(seed);
+        } else {
+          currentParticleData = null;
+        }
+      }, 250);
+    });
+
+    // ---- Submit ----
+    submitBtn.addEventListener('click', async () => {
+      if (submitted) return;
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'กำลังส่ง...';
+
+      try {
+        const res = await fetch('/join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+
+        if (!res.ok) throw new Error('server error');
+        const participant = await res.json();
+
+        submitted = true;
+
+        // Show success view
+        successParticleData = generateFingerprintParticles(participant.seed);
+        successPaletteIndex = participant.paletteIndex;
+
+        document.getElementById('success-name').textContent = participant.name;
+        document.getElementById('main-view').style.display = 'none';
+        document.getElementById('success-view').classList.add('visible');
+
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'เป็นส่วนหนึ่งของค่าย ✦';
+        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+      }
+    });
+  </script>
+</body>
+</html>
