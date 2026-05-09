@@ -12,6 +12,7 @@ const STAGGER_MS      = 110;   // ms between each arc activating
 const TRANSITION_MS   = 600;   // colour fade-in duration
 const FLARE_MS        = 1400;  // white-hot flare duration after activation
 const DARK_ALPHA      = 18;
+const BREATHE_MIN     = 0.10;  // lit arcs never dim below 10% even at trough
 
 let fp = null;
 let states = [];
@@ -159,10 +160,16 @@ const sketch = (p) => {
     const coreW     = radius * 0.042;   // core stroke width (scales with screen)
 
     // Slow coordinated breathe
-    const rawBreathe = Math.sin(t * 0.28) * 0.5 + 0.5; // 0..1, ~22s cycle
-    // First peak (~t=5.6s) allowed full brightness; after t=10s cap at 50% forever
-    const intensityCap  = t < 10 ? 1.0 : 0.5;
-    const globalBreathe = Math.min(rawBreathe, intensityCap);
+    // Water-surface ripple: 3 plane waves travelling in different directions
+    // interfere across pt.x/pt.y space → organic, unpredictable shimmer
+    const intensityCap = t < 3 ? 1.0 : 0.2;
+    const breatheOf = (pt) => {
+      const w1 = Math.sin(t * 1.10 + pt.x *  8.0 + pt.y *  4.2);
+      const w2 = Math.sin(t * 0.83 - pt.x *  5.5 + pt.y *  9.1);
+      const w3 = Math.sin(t * 1.47 + pt.x *  3.8 - pt.y *  7.3);
+      const raw = (w1 + w2 + w3) / 3 * 0.5 + 0.5;
+      return Math.max(BREATHE_MIN, Math.min(raw, intensityCap));
+    };
     const globalFlicker = Math.sin(t * 0.75 + 0.8) * 0.5 + 0.5; // 0..1, slow ripple
 
     // ---- background ----
@@ -230,12 +237,13 @@ const sketch = (p) => {
       g = Math.min(255, g + (255 - g) * flarePeak * 0.9);
       b = Math.min(255, b + (255 - b) * flarePeak * 0.9);
 
-      const breatheAmt = pt.opacity * globalBreathe; // capped at 50% after first peak
+      const breathe    = breatheOf(pt);
+      const breatheAmt = pt.opacity * breathe;
 
       const t_ring  = pt.ring / 7;
-      const halfLen = pt.size * baseScale * 4.2 * (1 + globalBreathe * 0.08);
+      const halfLen = pt.size * baseScale * 4.2 * (1 + breathe * 0.08);
       const cf      = halfLen * (0.55 - t_ring * 0.30);
-      const sw      = coreW * (pt.size / 2.2) * 1.6;
+      const sw      = coreW * (pt.size / 2.2) * 1.6 * 0.7;
 
       // Outer glow
       p.strokeWeight(sw * 9);

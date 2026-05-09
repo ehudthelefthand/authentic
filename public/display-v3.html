@@ -26,11 +26,12 @@
 <body>
   <div id="ws-status">●</div>
 
-  <button id="test-btn" onclick="testFill()" title="Test: fill all particles">test</button>
-  <button id="reset-btn" onclick="testReset()" title="Reset all particles">reset</button>
+  <button id="test-btn"  onclick="testFill()"    title="Test: fill all particles">test</button>
+  <button id="reset-btn" onclick="testReset()"   title="Reset all particles">reset</button>
+  <button id="add-btn"   onclick="testAddOne()"  title="Add 1 participant">+1</button>
 
   <style>
-    #test-btn, #reset-btn {
+    #test-btn, #reset-btn, #add-btn {
       position: fixed;
       bottom: 12px;
       font-family: monospace;
@@ -45,7 +46,9 @@
     }
     #test-btn  { left: 16px; }
     #reset-btn { left: 64px; }
+    #add-btn   { left: 118px; color: #1e4d2b; border-color: rgba(74,222,128,0.15); }
     #test-btn:hover, #reset-btn:hover { color: #64748b; background: rgba(255,255,255,0.08); }
+    #add-btn:hover { color: #4ade80; background: rgba(74,222,128,0.08); }
   </style>
 
   <script src="/display-v3.js"></script>
@@ -59,6 +62,14 @@
           pendingActivations.push({ index: i, color: hexToRgb(palette[0]) });
         }
       }
+    }
+
+    function testAddOne() {
+      const picks = pickDarkParticles(1);
+      if (picks.length === 0) return;
+      const paletteIndex = Math.floor(Math.random() * 8);
+      const color = hexToRgb(getPalette(paletteIndex)[0]);
+      pendingActivations.push({ index: picks[0], color });
     }
 
     function testReset() {

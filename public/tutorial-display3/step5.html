@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Step 5 — 4-Layer Glow</title>
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="panel">
+    <div class="step-badge">Step 5 / 8 — Display-V3 Tutorial</div>
+    <h1>4-Layer Glow<br>Neon Effect</h1>
+
+    <div class="concept">
+      <strong>แนวคิดหลัก</strong>
+      neon glow ที่ดูสวย ไม่ได้มาจากเส้นหนาเส้นเดียว<br>
+      แต่มาจากวาด <strong style="color:#e2e8f0;text-transform:none;font-size:inherit;letter-spacing:0">เส้นเดิม 4 ครั้ง</strong>
+      บน ADD blend:<br><br>
+
+      <code>Outer</code> &nbsp;— weight×9, &nbsp;alpha ต่ำมาก → halo<br>
+      <code>Mid</code> &nbsp;&nbsp;&nbsp;— weight×4.5, alpha กลาง → ขยายแสง<br>
+      <code>Inner</code> &nbsp;— weight×2.2, alpha สูง → ความเข้ม<br>
+      <code>Core</code> &nbsp;&nbsp;— weight×1, &nbsp;alpha เต็ม → ความคม<br><br>
+      ADD blend ทำให้แต่ละชั้นสะสม → ตรงกลางสว่างสุด
+    </div>
+
+    <div class="tip">
+      ใช้ปุ่มด้านล่างเพื่อ toggle แต่ละ layer<br>
+      ดูว่า layer ไหนให้อะไร<br><br>
+      ลอง toggle เหลือแค่ Core เพื่อดูความแตกต่าง
+    </div>
+
+    <div class="note">
+      ใน display-v3 บรรทัด 241–258: strokeWeight คูณด้วย <code>sw</code> ซึ่ง scale ตามขนาด screen และ particle size
+    </div>
+
+    <div class="spacer"></div>
+    <nav class="nav">
+      <a href="step4.html">← ก่อนหน้า</a>
+      <a class="fwd" href="step6.html">ถัดไป →</a>
+    </nav>
+  </aside>
+
+  <main class="canvas-area">
+    <div id="sketch"></div>
+    <div class="controls">
+      <button class="btn active" id="btn-outer" onclick="toggle('outer')">outer</button>
+      <button class="btn active" id="btn-mid"   onclick="toggle('mid')">mid</button>
+      <button class="btn active" id="btn-inner" onclick="toggle('inner')">inner</button>
+      <button class="btn active" id="btn-core"  onclick="toggle('core')">core</button>
+    </div>
+  </main>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+const layers = { outer: true, mid: true, inner: true, core: true };
+
+function toggle(name) {
+  layers[name] = !layers[name];
+  const btn = document.getElementById('btn-' + name);
+  btn.className = layers[name] ? 'btn active' : 'btn';
+}
+
+new p5(p => {
+  p.setup = () => {
+    const el = document.getElementById('sketch');
+    p.createCanvas(el.offsetWidth, el.offsetHeight);
+    p.frameRate(40);
+  };
+
+  p.windowResized = () => {
+    const el = document.getElementById('sketch');
+    p.resizeCanvas(el.offsetWidth, el.offsetHeight);
+  };
+
+  p.draw = () => {
+    p.background(5, 4, 8);
+
+    const cx = p.width / 2;
+    const cy = p.height / 2;
+
+    const x1    = cx - 180;
+    const y1    = cy;
+    const x2    = cx + 180;
+    const y2    = cy;
+    const ctrlX = cx;
+    const ctrlY = cy - 100;
+
+    const r = 100, g = 180, b = 255;
+    const sw = 3; // base stroke weight
+
+    p.noFill();
+    p.strokeCap(p.ROUND);
+
+    const drawArc = () => {
+      p.beginShape();
+        p.vertex(x1, y1);
+        p.quadraticVertex(ctrlX, ctrlY, x2, y2);
+      p.endShape();
+    };
+
+    // ── Additive layers ──
+    p.blendMode(p.ADD);
+
+    if (layers.outer) {
+      p.strokeWeight(sw * 9);
+      p.stroke(r, g, b, 12);
+      drawArc();
+    }
+    if (layers.mid) {
+      p.strokeWeight(sw * 4.5);
+      p.stroke(r, g, b, 35);
+      drawArc();
+    }
+    if (layers.inner) {
+      p.strokeWeight(sw * 2.2);
+      p.stroke(r, g, b, 90);
+      drawArc();
+    }
+    if (layers.core) {
+      p.strokeWeight(sw * 1);
+      p.stroke(r, g, b, 220);
+      drawArc();
+    }
+
+    // ── Labels ──
+    p.blendMode(p.BLEND);
+    p.noStroke();
+    p.textAlign(p.CENTER);
+    p.textSize(11);
+
+    const labels = [
+      { name: 'outer', weight: sw*9,   alpha: 12,  y: cy - 100 - sw*4.5 - 20 },
+      { name: 'mid',   weight: sw*4.5, alpha: 35,  y: cy - 100 - sw*2.2 - 8 },
+      { name: 'inner', weight: sw*2.2, alpha: 90,  y: cy - 100 + 4 },
+      { name: 'core',  weight: sw,     alpha: 220, y: cy - 100 + 18 },
+    ];
+
+    labels.forEach(l => {
+      const on = layers[l.name];
+      p.fill(on ? 80 : 30, on ? 100 : 40, on ? 140 : 60, on ? 160 : 80);
+      p.text(`${l.name}  ×${(l.weight/sw).toFixed(1)}  α${l.alpha}`, cx + 220, l.y);
+    });
+  };
+}, document.getElementById('sketch'));
+</script>
+</body>
+</html>

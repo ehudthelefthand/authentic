@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Tutorial — Neon Fingerprint Wall</title>
+  <link rel="stylesheet" href="_shared.css">
+  <style>
+    body { overflow: auto; }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 64px 40px 80px;
+    }
+
+    .header { margin-bottom: 48px; }
+    .header h1 {
+      font-size: 24px;
+      color: #e2e8f0;
+      margin-bottom: 8px;
+    }
+    .header p {
+      font-size: 14px;
+      color: #334155;
+      line-height: 1.6;
+    }
+
+    .steps { display: flex; flex-direction: column; gap: 10px; }
+
+    .step-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      padding: 18px 20px;
+      background: #06060e;
+      border: 1px solid #1a2236;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.15s;
+      color: inherit;
+    }
+    .step-card:hover {
+      background: #0a0f1e;
+      border-color: #263552;
+      transform: translateX(4px);
+    }
+
+    .step-num {
+      font-size: 11px;
+      font-family: monospace;
+      color: #2d3f5a;
+      padding: 4px 8px;
+      background: #0a0f1e;
+      border: 1px solid #1a2236;
+      border-radius: 4px;
+      white-space: nowrap;
+      margin-top: 2px;
+      letter-spacing: 1px;
+    }
+
+    .step-info { flex: 1; }
+    .step-info h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #c8d8ec;
+      margin-bottom: 5px;
+    }
+    .step-info p {
+      font-size: 13px;
+      color: #4a607a;
+      line-height: 1.55;
+    }
+    .step-info code {
+      background: #141e30;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #5a8ab0;
+    }
+
+    .step-arrow {
+      color: #2d3f5a;
+      font-size: 18px;
+      margin-top: 4px;
+      transition: color 0.15s;
+    }
+    .step-card:hover .step-arrow { color: #7dd3fc; }
+
+    .step-card.summary {
+      border-color: #1e3a5f;
+      background: #070d18;
+    }
+    .step-card.summary h2 { color: #7dd3fc; }
+    .step-card.summary .step-num { border-color: #1e3a5f; color: #3b6fa8; }
+
+    .divider {
+      height: 1px;
+      background: #0f172a;
+      margin: 6px 0;
+    }
+
+    .footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #1a2236;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer span {
+      font-size: 12px;
+      color: #1e293b;
+    }
+    .footer a {
+      font-size: 13px;
+      color: #3b6fa8;
+      text-decoration: none;
+      padding: 8px 16px;
+      border: 1px solid #1e3a5f;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .footer a:hover { background: #0c1f38; color: #7dd3fc; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>Neon Fingerprint Wall</h1>
+    <p>Tutorial: เรียนรู้หลักการทำงานของ <code style="color:#5a8ab0;background:#141e30;padding:2px 6px;border-radius:3px;font-size:13px">display-v3.js</code> ทีละ concept<br>
+    แต่ละ step เพิ่มแค่ 1 แนวคิดใหม่ — เรียงจากง่ายไปซับซ้อน</p>
+  </div>
+
+  <div class="steps">
+
+    <a class="step-card" href="step1.html">
+      <div class="step-num">01</div>
+      <div class="step-info">
+        <h2>Bezier Arc — เส้นโค้งพื้นฐาน</h2>
+        <p>p5.js canvas + <code>quadraticVertex</code> — control point ดึงเส้นให้โค้ง</p>
+      </div>
+      <div class="step-arrow">›</div>
+    </a>
+
+    <a class="step-card" href="step2.html">
+      <div class="step-num">02</div>
+      <div class="step-info">
+        <h2>Arc บนวงกลม — Tangent Angle</h2>
+        <p>วาง arc ตามขอบวงกลม โดยหันตาม tangent ของวงกลม ณ จุดนั้น</p>
+      </div>
+      <div class="step-arrow">›</div>
+    </a>
+
+    <a class="step-card" href="step3.html">
+      <div class="step-num">03</div>
+      <div class="step-info">
+        <h2>Dark / Lit State — คลิกเพื่อติดแสง</h2>
+        <p>แต่ละ arc มี <code>state</code> — <code>null</code> (dark) หรือ <code>[r,g,b]</code> (lit)</p>
+      </div>
+      <div class="step-arrow">›</div>
+    </a>
+
+    <a class="step-card" href="step4.html">
+      <div class="step-num">04</div>
+      <div class="step-info">
+        <h2>Additive Blend — แสงบวกกัน</h2>
+        <p><code>blendMode(ADD)</code> ทำให้แสงซ้อนกัน = สว่างขึ้น ต่างจาก BLEND ปกติที่ทับกัน</p>
+      </div>
+      <div class="step-arrow">›</div>
+    </a>
+
+    <a class="step-card" href="step5.html">
+      <div class="step-num">05</div>
+      <div class="step-info">
+        <h2>4-Layer Glow — Neon Effect</h2>
+        <p>วาดเส้นเดิม 4 ครั้ง: outer / mid / inner / core — toggle แต่ละ layer ได้</p>
+      </div>
+      <div class="step-arrow">›</div>
+    </a>
+
+    <a class="step-card" href="step6.html">
+      <div class="step-num">06</div>
+      <div class="step-info">
+        <h2>Flare — White-Hot Activation</h2>
+        <p><code>flareT</code> 0→1 lerp สีจาก ขาว → สีจริง เมื่อ arc เพิ่งถูก activate</p>
+      </div>
+      <div class="step-arrow">›</div>
+    </a>
+
+    <a class="step-card" href="step7.html">
+      <div class="step-num">07</div>
+      <div class="step-info">
+        <h2>Breathing — Sine Pulse พร้อมกัน</h2>
+        <p>sine wave เดียว <code>globalBreathe</code> ที่ใช้กับทุก arc → ทั้ง wall หายใจพร้อมกัน</p>
+      </div>
+      <div class="step-arrow">›</div>
+    </a>
+
+    <div class="divider"></div>
+
+    <a class="step-card summary" href="step8.html">
+      <div class="step-num">08</div>
+      <div class="step-info">
+        <h2>ดู display-v3.js ด้วยตาใหม่</h2>
+        <p>Code map — แต่ละบรรทัดใน display-v3.js map กับ step ไหน + สิ่งที่เพิ่มเติม</p>
+      </div>
+      <div class="step-arrow">›</div>
+    </a>
+
+  </div>
+
+  <div class="footer">
+    <span>Authentic Camp — สะท้อนพระคริสต์ด้วยชีวิตจริง</span>
+    <a href="/display-v3.html" target="_blank">เปิด Wall จริง →</a>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Step 3 — Dark / Lit State</title>
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="panel">
+    <div class="step-badge">Step 3 / 8 — Display-V3 Tutorial</div>
+    <h1>Dark / Lit State<br>คลิกเพื่อติดแสง</h1>
+
+    <div class="concept">
+      <strong>แนวคิดหลัก</strong>
+      แต่ละ arc มี <code>state</code> สองค่า:<br><br>
+      <code>null</code> = dark (ยังไม่มีคนสแกน)<br>
+      <code>[r, g, b]</code> = lit (มีคนสแกนแล้ว)<br><br>
+      ตอน draw ตรวจ state แล้วเลือกว่าจะวาดด้วยสีมืดหรือสีสว่าง — ง่ายมาก แต่นี่คือ core ของ wall
+    </div>
+
+    <div class="concept">
+      <strong>Palette Index</strong>
+      ใน display-v3 แต่ละ participant มี <code>paletteIndex</code> เป็น 0–7
+      ที่กำหนดสีของตัวเอง ตรงกับ <code>getPalette()</code> ใน fingerprint.js
+    </div>
+
+    <div class="tip">
+      คลิกบน canvas เพื่อติดแสง arc<br>
+      กด <kbd>R</kbd> เพื่อ reset ทุกอัน<br><br>
+      ลองดูว่าถ้า arc ทุกอันติดแสงหมด ดูต่างจากตอนไม่มีอะไรแค่ไหน
+    </div>
+
+    <div class="spacer"></div>
+    <nav class="nav">
+      <a href="step2.html">← ก่อนหน้า</a>
+      <a class="fwd" href="step4.html">ถัดไป →</a>
+    </nav>
+  </aside>
+
+  <main class="canvas-area">
+    <div id="sketch"></div>
+    <div class="controls">
+      <button class="btn" onclick="resetAll()">reset</button>
+      <button class="btn" onclick="fillAll()">fill all</button>
+    </div>
+  </main>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+const COUNT  = 60;
+const RADIUS = 160;
+const HALF   = 18;
+
+const PALETTES = [
+  [100, 180, 255],  // blue
+  [180, 120, 255],  // purple
+  [80,  220, 160],  // green
+  [255, 160,  80],  // orange
+  [255, 100, 160],  // pink
+  [100, 230, 220],  // teal
+  [255, 210,  80],  // yellow
+  [160, 200, 255],  // sky
+];
+
+let litColor;
+
+function resetAll() {
+  litColor = new Array(COUNT).fill(null);
+}
+
+function fillAll() {
+  for (let i = 0; i < COUNT; i++) {
+    if (!litColor[i]) litColor[i] = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+  }
+}
+
+new p5(p => {
+  litColor = new Array(COUNT).fill(null);
+
+  p.setup = () => {
+    const el = document.getElementById('sketch');
+    p.createCanvas(el.offsetWidth, el.offsetHeight);
+    p.frameRate(40);
+  };
+
+  p.windowResized = () => {
+    const el = document.getElementById('sketch');
+    p.resizeCanvas(el.offsetWidth, el.offsetHeight);
+  };
+
+  p.keyPressed = () => {
+    if (p.key === 'r' || p.key === 'R') resetAll();
+  };
+
+  p.mousePressed = () => {
+    // ติด arc ที่ใกล้ mouse ที่สุด
+    const cx = p.width / 2, cy = p.height / 2;
+    let closest = -1, minDist = 999;
+    for (let i = 0; i < COUNT; i++) {
+      const angle = (i / COUNT) * Math.PI * 2;
+      const px = cx + Math.cos(angle) * RADIUS;
+      const py = cy + Math.sin(angle) * RADIUS;
+      const d  = Math.hypot(p.mouseX - px, p.mouseY - py);
+      if (d < minDist) { minDist = d; closest = i; }
+    }
+    if (closest >= 0 && !litColor[closest]) {
+      litColor[closest] = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+    }
+  };
+
+  p.draw = () => {
+    p.background(5, 4, 8);
+
+    const cx = p.width / 2;
+    const cy = p.height / 2;
+    const lit = litColor.filter(Boolean).length;
+
+    p.noFill();
+    p.strokeCap(p.ROUND);
+
+    for (let i = 0; i < COUNT; i++) {
+      const angle = (i / COUNT) * Math.PI * 2;
+      const px    = cx + Math.cos(angle) * RADIUS;
+      const py    = cy + Math.sin(angle) * RADIUS;
+      const tang  = angle + Math.PI / 2;
+
+      const x1    = px - Math.cos(tang) * HALF;
+      const y1    = py - Math.sin(tang) * HALF;
+      const x2    = px + Math.cos(tang) * HALF;
+      const y2    = py + Math.sin(tang) * HALF;
+      const ctrlX = px - Math.cos(angle) * HALF * 0.5;
+      const ctrlY = py - Math.sin(angle) * HALF * 0.5;
+
+      if (litColor[i]) {
+        const [r, g, b] = litColor[i];
+        p.strokeWeight(2.5);
+        p.stroke(r, g, b, 230);
+      } else {
+        p.strokeWeight(1.5);
+        p.stroke(30, 35, 60, 55);
+      }
+
+      p.beginShape();
+        p.vertex(x1, y1);
+        p.quadraticVertex(ctrlX, ctrlY, x2, y2);
+      p.endShape();
+    }
+
+    // counter
+    p.blendMode(p.BLEND);
+    p.noStroke();
+    p.fill(50, 65, 90, 180);
+    p.textSize(12);
+    p.textAlign(p.CENTER);
+    p.text(`${lit} / ${COUNT} arcs lit — คลิกบน arc เพื่อติดแสง`, p.width / 2, p.height - 28);
+  };
+}, document.getElementById('sketch'));
+</script>
+</body>
+</html>

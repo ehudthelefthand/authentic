@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Step 1 — Bezier Arc</title>
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="panel">
+    <div class="step-badge">Step 1 / 8 — Display-V3 Tutorial</div>
+    <h1>Bezier Arc<br>เส้นโค้งพื้นฐาน</h1>
+
+    <div class="concept">
+      <strong>แนวคิดหลัก</strong>
+      p5.js วาดเส้นโค้งด้วย <code>quadraticVertex</code>
+      ซึ่งต้องการ 3 จุด:<br><br>
+      <code>vertex(x1,y1)</code> → จุดเริ่ม<br>
+      <code>quadraticVertex(cx,cy, x2,y2)</code> → control point + จุดสิ้นสุด<br><br>
+      <strong style="text-transform:none;font-size:13px;letter-spacing:0">Control point</strong>
+      คือจุด "ดึง" เส้นให้โค้ง — ไม่ได้อยู่บนเส้นจริงๆ แต่เป็นตัวกำหนดทิศทาง
+    </div>
+
+    <div class="tip">
+      เปลี่ยน control point Y จาก <code>100</code> → <code>300</code><br>
+      เส้นโค้งจะกลับทิศ<br><br>
+      ลอง X เป็น <code>100</code> หรือ <code>300</code><br>
+      เส้นจะเอียงซ้าย/ขวา
+    </div>
+
+    <div class="note">
+      ใน display-v3 แต่ละ arc คือ bezier เส้นหนึ่ง ที่วางบน fingerprint shape โดย <code>drawArc()</code> บรรทัด 52–73
+    </div>
+
+    <div class="spacer"></div>
+    <nav class="nav">
+      <a class="off" href="#">← ก่อนหน้า</a>
+      <a class="fwd" href="step2.html">ถัดไป →</a>
+    </nav>
+  </aside>
+
+  <main class="canvas-area">
+    <div id="sketch"></div>
+  </main>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+new p5(p => {
+  p.setup = () => {
+    const el = document.getElementById('sketch');
+    p.createCanvas(el.offsetWidth, el.offsetHeight);
+  };
+
+  p.windowResized = () => {
+    const el = document.getElementById('sketch');
+    p.resizeCanvas(el.offsetWidth, el.offsetHeight);
+  };
+
+  p.draw = () => {
+    p.background(5, 4, 8);
+
+    const cx = p.width / 2;
+    const cy = p.height / 2;
+
+    // จุดเริ่มต้นและจุดสิ้นสุด (เส้นแนวนอน)
+    const x1 = cx - 160, y1 = cy;
+    const x2 = cx + 160, y2 = cy;
+
+    // control point อยู่ด้านบน — ดึงเส้นขึ้น
+    const ctrlX = cx;
+    const ctrlY = cy - 120;
+
+    // แสดง control point และเส้น guide จางๆ
+    p.strokeWeight(1);
+    p.stroke(40, 50, 70, 100);
+    p.line(x1, y1, ctrlX, ctrlY);
+    p.line(x2, y2, ctrlX, ctrlY);
+
+    p.noStroke();
+    p.fill(40, 50, 70, 150);
+    p.ellipse(x1, y1, 8);
+    p.ellipse(x2, y2, 8);
+    p.fill(80, 100, 140, 180);
+    p.ellipse(ctrlX, ctrlY, 8);
+
+    // label
+    p.fill(40, 50, 70, 150);
+    p.textSize(11);
+    p.textAlign(p.CENTER);
+    p.noStroke();
+    p.text('vertex(x1,y1)', x1, y1 + 20);
+    p.text('vertex(x2,y2)', x2, y2 + 20);
+    p.fill(80, 100, 140, 150);
+    p.text('control point', ctrlX, ctrlY - 14);
+
+    // วาด arc จริง
+    p.noFill();
+    p.stroke(255, 255, 255, 220);
+    p.strokeWeight(2.5);
+    p.strokeCap(p.ROUND);
+    p.beginShape();
+      p.vertex(x1, y1);
+      p.quadraticVertex(ctrlX, ctrlY, x2, y2);
+    p.endShape();
+  };
+}, document.getElementById('sketch'));
+</script>
+</body>
+</html>

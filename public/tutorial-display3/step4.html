@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Step 4 — Additive Blend</title>
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="panel">
+    <div class="step-badge">Step 4 / 8 — Display-V3 Tutorial</div>
+    <h1>Additive Blend<br>แสงบวกกัน</h1>
+
+    <div class="concept">
+      <strong>BLEND (ปกติ)</strong>
+      สีหลังทับสีหน้า — เหมือนทาสีบนกระดาษ<br>
+      แสงซ้อนกันมาก ≠ สว่างขึ้น
+    </div>
+
+    <div class="concept">
+      <strong>ADD (Additive)</strong>
+      สีบวกกันทางคณิตศาสตร์ — เหมือน projector สองตัวฉายทับกัน<br><br>
+      <code>RED(255,0,0) + BLUE(0,0,255)</code><br>
+      = <code>MAGENTA(255,0,255)</code><br><br>
+      แสงซ้อนกันมาก = สว่างขึ้น → เป็นขาวสุดท้าย<br>
+      นั่นคือเหตุผลที่ neon glow ดูสว่างจาก dark background
+    </div>
+
+    <div class="tip">
+      ดูจุดที่วงกลมซ้อนกัน<br>
+      ฝั่ง ADD จะสว่างกว่า/ขาวกว่า<br><br>
+      กด <kbd>Space</kbd> เพื่อ animate วงกลมเคลื่อนที่
+    </div>
+
+    <div class="note">
+      ใน display-v3 PASS 2 (lit arcs) ใช้ <code>ADD</code> blend ทั้งหมด แล้ว reset กลับ <code>BLEND</code> ก่อนวาด header
+    </div>
+
+    <div class="spacer"></div>
+    <nav class="nav">
+      <a href="step3.html">← ก่อนหน้า</a>
+      <a class="fwd" href="step5.html">ถัดไป →</a>
+    </nav>
+  </aside>
+
+  <main class="canvas-area">
+    <div id="sketch"></div>
+    <div class="controls">
+      <button class="btn active" id="animBtn" onclick="toggleAnim()">animate: on</button>
+    </div>
+  </main>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+let doAnim = true;
+
+function toggleAnim() {
+  doAnim = !doAnim;
+  document.getElementById('animBtn').textContent = `animate: ${doAnim ? 'on' : 'off'}`;
+  document.getElementById('animBtn').className   = doAnim ? 'btn active' : 'btn';
+}
+
+new p5(p => {
+  p.setup = () => {
+    const el = document.getElementById('sketch');
+    p.createCanvas(el.offsetWidth, el.offsetHeight);
+    p.frameRate(40);
+  };
+
+  p.windowResized = () => {
+    const el = document.getElementById('sketch');
+    p.resizeCanvas(el.offsetWidth, el.offsetHeight);
+  };
+
+  p.keyPressed = () => { if (p.key === ' ') toggleAnim(); };
+
+  p.draw = () => {
+    p.background(0);
+
+    const t      = doAnim ? p.millis() / 1000 : 0;
+    const W      = p.width;
+    const H      = p.height;
+    const half   = W / 2;
+    const cy     = H / 2;
+    const r      = Math.min(W * 0.17, H * 0.32);
+    const offset = r * (0.5 + Math.sin(t * 0.8) * 0.35);
+
+    // === LEFT HALF: BLEND ===
+    p.blendMode(p.BLEND);
+    p.noStroke();
+
+    p.fill(220, 60, 60, 200);
+    p.ellipse(half * 0.5 - offset * 0.5, cy, r * 2);
+
+    p.fill(60, 60, 220, 200);
+    p.ellipse(half * 0.5 + offset * 0.5, cy, r * 2);
+
+    // === RIGHT HALF: ADD ===
+    p.blendMode(p.ADD);
+    p.fill(220, 60, 60, 200);
+    p.ellipse(half + half * 0.5 - offset * 0.5, cy, r * 2);
+
+    p.fill(60, 60, 220, 200);
+    p.ellipse(half + half * 0.5 + offset * 0.5, cy, r * 2);
+
+    // === Labels & divider ===
+    p.blendMode(p.BLEND);
+
+    // divider
+    p.stroke(30, 40, 60, 150);
+    p.strokeWeight(1);
+    p.line(half, 0, half, H);
+
+    p.noStroke();
+
+    // section labels
+    p.textAlign(p.CENTER);
+    p.textSize(11);
+    p.fill(50, 65, 90, 200);
+    p.text('BLEND', half * 0.5, H - 28);
+    p.text('ADD', half + half * 0.5, H - 28);
+
+    // sub labels
+    p.textSize(10);
+    p.fill(30, 40, 60, 180);
+    p.text('สีทับกัน — ไม่สว่างขึ้น', half * 0.5, H - 14);
+    p.text('แสงบวกกัน — สว่างขึ้น/ขาว', half + half * 0.5, H - 14);
+
+    // intersection label ฝั่ง ADD
+    const midX = half + half * 0.5;
+    if (offset < r * 0.9) {
+      p.fill(200, 200, 255, 140);
+      p.textSize(10);
+      p.text('= magenta/white', midX, cy - r - 12);
+    }
+  };
+}, document.getElementById('sketch'));
+</script>
+</body>
+</html>

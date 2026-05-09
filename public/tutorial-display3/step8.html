@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Step 8 — ดู display-v3 ด้วยตาใหม่</title>
+  <link rel="stylesheet" href="_shared.css">
+  <style>
+    body { overflow: auto; }
+    .page { max-width: 860px; margin: 0 auto; padding: 48px 40px 80px; }
+    .top-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 40px;
+    }
+    .top-nav a {
+      padding: 8px 16px;
+      background: #0a0f1e;
+      border: 1px solid #1a2236;
+      border-radius: 6px;
+      color: #475569;
+      text-decoration: none;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+    .top-nav a:hover { background: #111827; color: #94a3b8; }
+    .top-nav a.off   { opacity: 0.25; pointer-events: none; }
+    .top-nav a.fwd   { border-color: #1e3a5f; color: #7dd3fc; }
+    .top-nav a.fwd:hover { background: #0c1f38; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="top-nav">
+    <a href="step7.html">← ก่อนหน้า</a>
+    <a class="fwd off" href="#">จบแล้ว ✓</a>
+  </div>
+
+  <div style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#2d3f5a;margin-bottom:14px">
+    Step 8 / 8 — Display-V3 Tutorial
+  </div>
+
+  <h1 style="font-size:22px;color:#e2e8f0;margin-bottom:8px">
+    ดู display-v3.js ด้วยตาใหม่
+  </h1>
+  <p style="color:#334155;font-size:13px;margin-bottom:40px">
+    แต่ละ concept ที่เรียนมา 7 steps map ตรงกับส่วนไหนของ code จริง
+  </p>
+
+  <!-- Map table -->
+  <div class="section-title">Code Map</div>
+  <table>
+    <thead>
+      <tr>
+        <th>บรรทัด</th>
+        <th>Step</th>
+        <th>หน้าที่</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>52–73</td>
+        <td><span class="step-link">1, 2</span></td>
+        <td><code style="color:#7dd3fc">drawArc()</code> — วาด bezier arc โดยใช้ tangent direction ของแต่ละ particle</td>
+      </tr>
+      <tr>
+        <td>76–87</td>
+        <td>—</td>
+        <td><code style="color:#7dd3fc">drawBackgroundGlow()</code> — ambient amber glow ที่สว่างขึ้นตามจำนวน lit arcs</td>
+      </tr>
+      <tr>
+        <td>126–127</td>
+        <td>—</td>
+        <td><code style="color:#7dd3fc">p.background(5, 4, 8)</code> — clear frame ด้วยสีดำเกือบๆ ทุก frame</td>
+      </tr>
+      <tr>
+        <td>133–142</td>
+        <td>—</td>
+        <td>Queue processor — pop <code style="color:#7dd3fc">pendingActivations</code> ทีละอัน ทุก <code style="color:#7dd3fc">STAGGER_MS</code> ms</td>
+      </tr>
+      <tr>
+        <td>145–151</td>
+        <td>—</td>
+        <td>Advance animations — เพิ่ม <code style="color:#7dd3fc">progress</code> และ <code style="color:#7dd3fc">flareT</code> ทุก frame ตาม deltaTime</td>
+      </tr>
+      <tr>
+        <td>162–165</td>
+        <td><span class="step-link">7</span></td>
+        <td><code style="color:#7dd3fc">globalBreathe</code> — sine wave เดียว + <code style="color:#7dd3fc">intensityCap</code> cap 50% หลัง 10s</td>
+      </tr>
+      <tr>
+        <td>171–197</td>
+        <td><span class="step-link">3</span></td>
+        <td>PASS 1 — dark arcs ด้วย BLEND mode, alpha 18 + shimmer เล็กน้อย</td>
+      </tr>
+      <tr>
+        <td>200–258</td>
+        <td><span class="step-link">4, 5, 6</span></td>
+        <td>PASS 2 — lit arcs ด้วย ADD mode: color lerp + flare + 4-layer glow</td>
+      </tr>
+      <tr>
+        <td>214–224</td>
+        <td>—</td>
+        <td>Color transition lerp — ease-out cubic <code style="color:#7dd3fc">1 - (1-t)³</code> จาก transitionFrom → litColor</td>
+      </tr>
+      <tr>
+        <td>226–231</td>
+        <td><span class="step-link">6</span></td>
+        <td>Flare lerp — <code style="color:#7dd3fc">flarePeak = pow(flare, 0.5)</code> push สีไปขาว</td>
+      </tr>
+      <tr>
+        <td>233</td>
+        <td><span class="step-link">7</span></td>
+        <td><code style="color:#7dd3fc">breatheAmt = pt.opacity × globalBreathe</code> — breathe กระทบแต่ละ arc ต่างกันตาม opacity</td>
+      </tr>
+      <tr>
+        <td>241–258</td>
+        <td><span class="step-link">5</span></td>
+        <td>4-layer glow — outer / mid / inner / core ด้วย strokeWeight ×9, ×4.5, ×2.2, ×1</td>
+      </tr>
+      <tr>
+        <td>261–263</td>
+        <td>—</td>
+        <td>PASS 3 — reset <code style="color:#7dd3fc">blendMode(BLEND)</code> แล้ววาด header text</td>
+      </tr>
+      <tr>
+        <td>294–314</td>
+        <td>—</td>
+        <td><code style="color:#7dd3fc">connectWebSocket()</code> — รับ <code style="color:#7dd3fc">new_participant</code> event แล้ว enqueue particle</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Extra concepts -->
+  <div class="section-title">สิ่งที่ display-v3 เพิ่มเติมจาก tutorial นี้</div>
+  <ul class="extra-list">
+    <li>
+      <strong>fingerprint.js</strong> —
+      generate particle positions ให้เป็นรูปไอคอน camp จริงๆ แทนที่จะเป็นวงกลมเรียบๆ
+      แต่ละ particle มี <code>ring</code>, <code>angle</code>, <code>size</code>, <code>opacity</code>, <code>tangentAngle</code>
+    </li>
+    <li>
+      <strong>Color transition</strong> —
+      นอกจาก flare แล้ว ยังมี <code>progress</code> 0→1 ที่ lerp สีจาก <code>transitionFrom</code> → <code>litColor</code>
+      ด้วย ease-out cubic <code>1 - (1-t)³</code> ทำให้ fade in นุ่มขึ้น
+    </li>
+    <li>
+      <strong>Stagger queue</strong> —
+      <code>pendingActivations[]</code> + <code>STAGGER_MS = 110</code>ms ทำให้ arc ของ participant คนหนึ่งค่อยๆ ติดทีละอัน
+      ไม่ได้ติดพร้อมกันหมด
+    </li>
+    <li>
+      <strong>Micro drift</strong> —
+      <code>dx = sin(t×0.55 + angle×2.1) × 0.008</code> ทำให้แต่ละ arc ลอยเล็กน้อย ไม่นิ่งสนิท
+    </li>
+    <li>
+      <strong>WebSocket real-time</strong> —
+      <code>connectWebSocket()</code> รับ event จาก server แล้วเรียก <code>enqueueParticipant()</code>
+      auto-reconnect ทุก 3s ถ้า disconnect
+    </li>
+  </ul>
+
+  <!-- Link to live -->
+  <div class="section-title" style="margin-top:40px">เปิด Wall จริง</div>
+  <a class="open-link" href="/display-v3.html" target="_blank">
+    เปิด display-v3.html →
+  </a>
+
+</div>
+</body>
+</html>

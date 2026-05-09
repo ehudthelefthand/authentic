@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Step 7 — Breathing</title>
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="panel">
+    <div class="step-badge">Step 7 / 8 — Display-V3 Tutorial</div>
+    <h1>Breathing<br>Sine Pulse พร้อมกัน</h1>
+
+    <div class="concept">
+      <strong>แนวคิดหลัก</strong>
+      <code>globalBreathe</code> คือ sine wave ค่า<strong style="color:#e2e8f0;text-transform:none;font-size:inherit;letter-spacing:0">เดียว</strong>
+      ที่ใช้กับทุก arc พร้อมกัน → ทั้ง wall "หายใจ" เป็นจังหวะเดียว<br><br>
+
+      <code>sin(t × freq) × 0.5 + 0.5</code><br>
+      ← map ผล sine จาก −1..1 → 0..1<br><br>
+
+      <code>freq = 0.28</code> → period ~22s (หายใจช้า)<br><br>
+
+      breathe ควบคุม 2 อย่างพร้อมกัน:<br>
+      → alpha ของ glow layers (สว่าง/มืด)<br>
+      → ความยาว arc (+8% ตอน inhale)
+    </div>
+
+    <div class="concept">
+      <strong>intensityCap ใน display-v3</strong>
+      ช่วง 10s แรก breath สามารถ peak ได้เต็มที่<br>
+      หลังจากนั้น cap ที่ 50% ป้องกัน wall จ้าเกินไปตอนมีคนเยอะ
+    </div>
+
+    <div class="tip">
+      ลากสไลด์ความถี่<br>
+      0.05 = หายใจช้ามาก (~2 นาที)<br>
+      2.0 = กระพริบเร็ว
+    </div>
+
+    <div class="spacer"></div>
+    <nav class="nav">
+      <a href="step6.html">← ก่อนหน้า</a>
+      <a class="fwd" href="step8.html">ถัดไป →</a>
+    </nav>
+  </aside>
+
+  <main class="canvas-area">
+    <div id="sketch"></div>
+    <div class="controls" style="flex-direction:column;align-items:center;gap:6px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="color:#475569;font-size:12px;font-family:monospace">freq</span>
+        <input type="range" id="freq" min="0.05" max="3" step="0.01" value="0.28"
+               style="width:160px;accent-color:#3b6fa8">
+        <span id="freqVal" style="color:#7dd3fc;font-size:12px;font-family:monospace;width:40px">0.28</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="color:#475569;font-size:12px;font-family:monospace">cap</span>
+        <input type="range" id="cap" min="0.1" max="1" step="0.05" value="1.0"
+               style="width:160px;accent-color:#3b6fa8">
+        <span id="capVal" style="color:#7dd3fc;font-size:12px;font-family:monospace;width:40px">1.00</span>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+const COUNT  = 60;
+const RADIUS = 160;
+const HALF   = 18;
+
+const PALETTES = [
+  [100, 180, 255], [180, 120, 255], [80,  220, 160],
+  [255, 160,  80], [255, 100, 160], [100, 230, 220],
+];
+
+const freqSlider = document.getElementById('freq');
+const capSlider  = document.getElementById('cap');
+const freqVal    = document.getElementById('freqVal');
+const capVal     = document.getElementById('capVal');
+
+freqSlider.oninput = () => freqVal.textContent = parseFloat(freqSlider.value).toFixed(2);
+capSlider.oninput  = () => capVal.textContent  = parseFloat(capSlider.value).toFixed(2);
+
+// assign a color to every arc
+const arcColors = Array.from({length: COUNT}, (_, i) =>
+  PALETTES[i % PALETTES.length]
+);
+
+new p5(p => {
+  p.setup = () => {
+    const el = document.getElementById('sketch');
+    p.createCanvas(el.offsetWidth, el.offsetHeight);
+    p.frameRate(40);
+  };
+
+  p.windowResized = () => {
+    const el = document.getElementById('sketch');
+    p.resizeCanvas(el.offsetWidth, el.offsetHeight);
+  };
+
+  p.draw = () => {
+    p.background(5, 4, 8);
+
+    const t    = p.millis() / 1000;
+    const freq = parseFloat(freqSlider.value);
+    const cap  = parseFloat(capSlider.value);
+
+    const rawBreathe    = Math.sin(t * freq) * 0.5 + 0.5;
+    const globalBreathe = Math.min(rawBreathe, cap);
+
+    const cx = p.width / 2;
+    const cy = p.height / 2;
+    const sw = 2.5;
+
+    p.noFill();
+    p.strokeCap(p.ROUND);
+    p.blendMode(p.ADD);
+
+    for (let i = 0; i < COUNT; i++) {
+      const angle = (i / COUNT) * Math.PI * 2;
+      const px    = cx + Math.cos(angle) * RADIUS;
+      const py    = cy + Math.sin(angle) * RADIUS;
+      const tang  = angle + Math.PI / 2;
+
+      // arc ยาวขึ้นตอนหายใจเข้า
+      const half  = HALF * (1 + globalBreathe * 0.08);
+
+      const x1    = px - Math.cos(tang) * half;
+      const y1    = py - Math.sin(tang) * half;
+      const x2    = px + Math.cos(tang) * half;
+      const y2    = py + Math.sin(tang) * half;
+      const ctrlX = px - Math.cos(angle) * half * 0.5;
+      const ctrlY = py - Math.sin(angle) * half * 0.5;
+
+      const [r, g, b] = arcColors[i];
+
+      const arc = () => {
+        p.beginShape(); p.vertex(x1,y1); p.quadraticVertex(ctrlX,ctrlY,x2,y2); p.endShape();
+      };
+
+      p.strokeWeight(sw * 9);   p.stroke(r, g, b, globalBreathe * 10); arc();
+      p.strokeWeight(sw * 4.5); p.stroke(r, g, b, globalBreathe * 28); arc();
+      p.strokeWeight(sw * 2.2); p.stroke(r, g, b, globalBreathe * 70); arc();
+      p.strokeWeight(sw);       p.stroke(r, g, b, globalBreathe * 200); arc();
+    }
+
+    // breathe indicator bar
+    p.blendMode(p.BLEND);
+    p.noStroke();
+
+    const barW  = 160;
+    const barH  = 4;
+    const barX  = p.width / 2 - barW / 2;
+    const barY  = 28;
+
+    p.fill(20, 30, 50);
+    p.rect(barX, barY, barW, barH, 2);
+
+    p.fill(100, 180, 255, 180);
+    p.rect(barX, barY, barW * globalBreathe, barH, 2);
+
+    p.fill(50, 65, 90, 180);
+    p.textSize(10);
+    p.textAlign(p.CENTER);
+    p.text(`breathe: ${globalBreathe.toFixed(2)}`, p.width / 2, barY - 6);
+  };
+}, document.getElementById('sketch'));
+</script>
+</body>
+</html>

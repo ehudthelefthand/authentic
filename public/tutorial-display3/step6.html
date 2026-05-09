@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Step 6 — Flare</title>
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="panel">
+    <div class="step-badge">Step 6 / 8 — Display-V3 Tutorial</div>
+    <h1>Flare<br>White-Hot Activation</h1>
+
+    <div class="concept">
+      <strong>แนวคิดหลัก</strong>
+      เมื่อ arc เพิ่งถูก activate <code>flareT = 0</code><br>
+      แล้วค่อยๆ เพิ่มถึง <code>1</code> ตาม <code>deltaTime / FLARE_MS</code><br><br>
+      <code>flare = 1 - flareT</code> &nbsp;← 1 ตอนเพิ่งติด, 0 ตอน settle<br><br>
+      จากนั้น lerp สีไปหาขาวตาม flare:<br>
+      <code>r = color.r + (255 - color.r) × flare</code><br>
+      <code>g = color.g + (255 - color.g) × flare</code><br>
+      <code>b = color.b + (255 - color.b) × flare</code><br><br>
+      ผล: เพิ่งติด = ขาวจ้า → ค่อยๆ กลายเป็นสีจริง
+    </div>
+
+    <div class="tip">
+      คลิกบน arc เพื่อ trigger flare<br>
+      คลิกหลายๆ ครั้งต่อกัน<br><br>
+      ลองเปลี่ยน <code>FLARE_MS</code> ใน code:<br>
+      400 = แฟลร์เร็ว, 3000 = fade ช้ามาก
+    </div>
+
+    <div class="note">
+      ใน display-v3 บรรทัด 226–231: ใช้ <code>Math.pow(flare, 0.5)</code> เป็น ease curve ทำให้ flare drop เร็วตอนแรกแล้วช้าลง
+    </div>
+
+    <div class="spacer"></div>
+    <nav class="nav">
+      <a href="step5.html">← ก่อนหน้า</a>
+      <a class="fwd" href="step7.html">ถัดไป →</a>
+    </nav>
+  </aside>
+
+  <main class="canvas-area">
+    <div id="sketch"></div>
+    <div class="controls">
+      <button class="btn" onclick="resetAll()">reset</button>
+    </div>
+  </main>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+const COUNT    = 60;
+const RADIUS   = 165;
+const HALF     = 18;
+const FLARE_MS = 1400;
+
+const PALETTES = [
+  [100, 180, 255], [180, 120, 255], [80,  220, 160],
+  [255, 160,  80], [255, 100, 160], [100, 230, 220],
+];
+
+let states;
+
+function resetAll() {
+  states = Array.from({length: COUNT}, () => ({
+    lit:    false,
+    color:  PALETTES[Math.floor(Math.random() * PALETTES.length)],
+    flareT: 1,
+  }));
+}
+
+new p5(p => {
+  resetAll();
+
+  p.setup = () => {
+    const el = document.getElementById('sketch');
+    p.createCanvas(el.offsetWidth, el.offsetHeight);
+    p.frameRate(40);
+  };
+
+  p.windowResized = () => {
+    const el = document.getElementById('sketch');
+    p.resizeCanvas(el.offsetWidth, el.offsetHeight);
+  };
+
+  p.mousePressed = () => {
+    const cx = p.width / 2, cy = p.height / 2;
+    let closest = -1, minDist = 999;
+    for (let i = 0; i < COUNT; i++) {
+      const angle = (i / COUNT) * Math.PI * 2;
+      const px = cx + Math.cos(angle) * RADIUS;
+      const py = cy + Math.sin(angle) * RADIUS;
+      const d  = Math.hypot(p.mouseX - px, p.mouseY - py);
+      if (d < minDist) { minDist = d; closest = i; }
+    }
+    if (closest >= 0) {
+      states[closest].lit    = true;
+      states[closest].flareT = 0; // trigger flare!
+      states[closest].color  = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+    }
+  };
+
+  p.draw = () => {
+    p.background(5, 4, 8);
+
+    const cx = p.width / 2;
+    const cy = p.height / 2;
+    const sw = 2.5;
+
+    p.noFill();
+    p.strokeCap(p.ROUND);
+
+    // PASS 1: dark arcs
+    p.blendMode(p.BLEND);
+    for (let i = 0; i < COUNT; i++) {
+      if (states[i].lit) continue;
+      const angle = (i / COUNT) * Math.PI * 2;
+      const px = cx + Math.cos(angle) * RADIUS;
+      const py = cy + Math.sin(angle) * RADIUS;
+      const tang = angle + Math.PI / 2;
+      const x1 = px - Math.cos(tang) * HALF, y1 = py - Math.sin(tang) * HALF;
+      const x2 = px + Math.cos(tang) * HALF, y2 = py + Math.sin(tang) * HALF;
+      const ctrlX = px - Math.cos(angle) * HALF * 0.5;
+      const ctrlY = py - Math.sin(angle) * HALF * 0.5;
+      p.strokeWeight(sw); p.stroke(30, 35, 60, 50);
+      p.beginShape(); p.vertex(x1,y1); p.quadraticVertex(ctrlX,ctrlY,x2,y2); p.endShape();
+    }
+
+    // PASS 2: lit arcs with flare
+    p.blendMode(p.ADD);
+    for (let i = 0; i < COUNT; i++) {
+      const st = states[i];
+      if (!st.lit) continue;
+
+      // advance flare
+      if (st.flareT < 1) st.flareT = Math.min(1, st.flareT + p.deltaTime / FLARE_MS);
+
+      const angle = (i / COUNT) * Math.PI * 2;
+      const px = cx + Math.cos(angle) * RADIUS;
+      const py = cy + Math.sin(angle) * RADIUS;
+      const tang = angle + Math.PI / 2;
+      const x1 = px - Math.cos(tang) * HALF, y1 = py - Math.sin(tang) * HALF;
+      const x2 = px + Math.cos(tang) * HALF, y2 = py + Math.sin(tang) * HALF;
+      const ctrlX = px - Math.cos(angle) * HALF * 0.5;
+      const ctrlY = py - Math.sin(angle) * HALF * 0.5;
+
+      // flare: 0=white-hot, 1=settled
+      const flare     = 1 - st.flareT;
+      const flarePeak = Math.pow(flare, 0.5); // ease: drop เร็วตอนแรก
+
+      let [r, g, b] = st.color;
+      r = Math.min(255, r + (255 - r) * flarePeak * 0.9);
+      g = Math.min(255, g + (255 - g) * flarePeak * 0.9);
+      b = Math.min(255, b + (255 - b) * flarePeak * 0.9);
+
+      const arc = () => {
+        p.beginShape(); p.vertex(x1,y1); p.quadraticVertex(ctrlX,ctrlY,x2,y2); p.endShape();
+      };
+
+      p.strokeWeight(sw * 9);   p.stroke(r, g, b, 10 + flarePeak * 18); arc();
+      p.strokeWeight(sw * 4.5); p.stroke(r, g, b, 28 + flarePeak * 50); arc();
+      p.strokeWeight(sw * 2.2); p.stroke(r, g, b, 70 + flarePeak * 120); arc();
+      p.strokeWeight(sw);       p.stroke(r, g, b, 200 + flarePeak * 55); arc();
+    }
+
+    p.blendMode(p.BLEND);
+    p.noStroke();
+    p.fill(40, 55, 85, 160);
+    p.textSize(12);
+    p.textAlign(p.CENTER);
+    p.text('คลิกบน arc เพื่อ trigger flare', p.width / 2, p.height - 28);
+  };
+}, document.getElementById('sketch'));
+</script>
+</body>
+</html>

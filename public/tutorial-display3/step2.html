@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Step 2 — Arcs on Circle</title>
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="layout">
+
+  <aside class="panel">
+    <div class="step-badge">Step 2 / 8 — Display-V3 Tutorial</div>
+    <h1>Arc บนวงกลม<br>Tangent Angle</h1>
+
+    <div class="concept">
+      <strong>แนวคิดหลัก</strong>
+      แต่ละ arc อยู่บน<strong style="color:#a8b8d0;text-transform:none;font-size:inherit;letter-spacing:0">ขอบวงกลม</strong>
+      และหันตาม<strong style="color:#a8b8d0;text-transform:none;font-size:inherit;letter-spacing:0"> tangent</strong>
+      ของวงกลม ณ จุดนั้น<br><br>
+      <code>angle</code> = มุมของจุดบนวงกลม<br>
+      <code>tangent = angle + π/2</code> = ตั้งฉากกับ radius<br><br>
+      จากนั้นวาง start/end ของ arc ตาม tangent direction แล้วใช้ control point ดันออกจากศูนย์กลาง
+    </div>
+
+    <div class="tip">
+      <code>COUNT</code> 40 → 80 ดูหนาแน่นขึ้น<br>
+      <code>half</code> 20 → 40 arc ยาวขึ้น<br>
+      <code>curveFactor</code> 0.5 → 2.0 โค้งมากขึ้น<br>
+      <code>r</code> (radius) 150 → เปลี่ยนขนาดวง
+    </div>
+
+    <div class="note">
+      ใน display-v3 จุด particle ไม่ได้อยู่บนวงกลมเรียบๆ แต่มาจาก <code>fingerprint.js</code> ที่ generate ตามรูปไอคอน camp
+    </div>
+
+    <div class="spacer"></div>
+    <nav class="nav">
+      <a href="step1.html">← ก่อนหน้า</a>
+      <a class="fwd" href="step3.html">ถัดไป →</a>
+    </nav>
+  </aside>
+
+  <main class="canvas-area">
+    <div id="sketch"></div>
+  </main>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+const COUNT  = 40;
+const RADIUS = 160;
+const HALF   = 20;
+const CURVE  = 0.5; // curveFactor multiplier
+
+new p5(p => {
+  let hoverIdx = -1;
+
+  p.setup = () => {
+    const el = document.getElementById('sketch');
+    p.createCanvas(el.offsetWidth, el.offsetHeight);
+    p.frameRate(40);
+  };
+
+  p.windowResized = () => {
+    const el = document.getElementById('sketch');
+    p.resizeCanvas(el.offsetWidth, el.offsetHeight);
+  };
+
+  p.draw = () => {
+    p.background(5, 4, 8);
+
+    const cx = p.width / 2;
+    const cy = p.height / 2;
+    const t  = p.millis() / 1000;
+
+    p.noFill();
+    p.strokeCap(p.ROUND);
+
+    for (let i = 0; i < COUNT; i++) {
+      const angle = (i / COUNT) * Math.PI * 2;
+      const px    = cx + Math.cos(angle) * RADIUS;
+      const py    = cy + Math.sin(angle) * RADIUS;
+
+      // tangent = ตั้งฉากกับ radius
+      const tang  = angle + Math.PI / 2;
+      const half  = HALF;
+
+      const x1    = px - Math.cos(tang) * half;
+      const y1    = py - Math.sin(tang) * half;
+      const x2    = px + Math.cos(tang) * half;
+      const y2    = py + Math.sin(tang) * half;
+
+      // control point ดันออกจากศูนย์กลาง
+      const ctrlX = px - Math.cos(angle) * half * CURVE;
+      const ctrlY = py - Math.sin(angle) * half * CURVE;
+
+      // hover highlight
+      const dist = Math.hypot(p.mouseX - px, p.mouseY - py);
+      const isHover = dist < 25;
+
+      p.strokeWeight(isHover ? 2.5 : 1.5);
+      p.stroke(isHover ? 200 : 180, isHover ? 230 : 200, isHover ? 255 : 240,
+               isHover ? 255 : 90);
+
+      p.beginShape();
+        p.vertex(x1, y1);
+        p.quadraticVertex(ctrlX, ctrlY, x2, y2);
+      p.endShape();
+
+      // hover: show angle label
+      if (isHover) {
+        p.fill(100, 160, 220, 180);
+        p.noStroke();
+        p.textSize(11);
+        p.textAlign(p.CENTER);
+        const deg = Math.round((angle / Math.PI) * 180);
+        p.text(`angle: ${deg}°`, cx, cy + RADIUS + 36);
+        p.text(`tangent: ${deg + 90}°`, cx, cy + RADIUS + 52);
+        p.noFill();
+      }
+    }
+
+    // วาด radius เส้นจางๆ ชี้ทิศทาง
+    const guideAngle = (Math.floor(t * 0.3 * COUNT) % COUNT / COUNT) * Math.PI * 2;
+    const gx = cx + Math.cos(guideAngle) * RADIUS;
+    const gy = cy + Math.sin(guideAngle) * RADIUS;
+    p.stroke(60, 80, 120, 80);
+    p.strokeWeight(1);
+    p.line(cx, cy, gx, gy);
+
+    // dot ที่ center
+    p.noStroke();
+    p.fill(40, 55, 80, 120);
+    p.ellipse(cx, cy, 6);
+  };
+}, document.getElementById('sketch'));
+</script>
+</body>
+</html>
