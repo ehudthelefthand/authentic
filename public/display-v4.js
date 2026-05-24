@@ -1,58 +1,97 @@
 // ================================================================
 // AUTHENTIC – Neon Soul v4
 //
-// Based on display-v2 (classic fingerprint shape) with:
-//   - 2-pass render: dark arcs (BLEND) then lit arcs (ADD)
-//   - 2-layer additive neon glow: outer halo + core
-//   - Water-surface interference breathing (3 plane waves)
-//   - White-hot flare on first activation
+// Session-aware display:
+//   - Per-participant single-particle activation (by particleIndex)
+//   - Session states: idle | open | closed | ended  (+ replay overlay)
+//   - Clear-out on Open, fill animation on Fill, neon reveal on Ended
+//   - Ping: white flare + expanding color ring
 // ================================================================
 
 const TOTAL_PARTICLES = 300;
-const STAGGER_MS      = 130;
 const TRANSITION_MS   = 700;
 const FLARE_MS        = 1400;
 const FP_SEED         = 42;
 const DARK_ALPHA      = 28;
 const BREATHE_MIN     = 0.10;
+const CLEAR_MS        = 1500;
+const PING_RING_MS    = 1100;
+const MAX_PING_RINGS  = 30;
 
 let fp = null;
 let states = [];
 let totalLit = 0;
-let pendingActivations = [];
-let lastActivateMs = 0;
 const joinedIds = new Set();
+const participantByIndex = new Map(); // particleIndex -> participant
 
-let glowRevealed    = false; // flips to true the moment totalLit reaches TOTAL_PARTICLES
-let glowTransition  = 0;    // 0 = v2 style, 1 = full neon glow (animates over GLOW_FADE_MS)
+let sessionInfo = null;
+let replayInfo = null;
+
+let clearingStart = 0; // ms; if > 0, we're animating a clear-out
+let pingRings = [];    // { particleIndex, color: [r,g,b], startMs }
+
+let glowRevealed    = false;
+let glowTransition  = 0;
 const GLOW_FADE_MS  = 2500;
-const glowLayers = { 1: true, 2: true, 3: true, 4: true }; // toggled by UI buttons
+const glowLayers = { 1: true, 2: true, 3: true, 4: true };
 
+// ---- helpers ----
 function hexToRgb(hex) {
   const n = parseInt(hex.replace('#', ''), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-function pickDarkParticles(n) {
-  const dark = [];
-  for (let i = 0; i < states.length; i++) {
-    if (!states[i].litColor && states[i].progress === 0) dark.push(i);
-  }
-  for (let i = dark.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [dark[i], dark[j]] = [dark[j], dark[i]];
-  }
-  return dark.slice(0, n);
+function activateParticle(particleIndex, color, opts = {}) {
+  if (particleIndex < 0 || particleIndex >= states.length) return;
+  const st = states[particleIndex];
+  if (st.litColor && !opts.force) return;
+  st.transitionFrom = st.litColor ? [...st.litColor] : [15, 18, 30];
+  st.litColor       = color;
+  st.progress       = 0;
+  st.flareT         = 0;
+  totalLit++;
 }
 
-function enqueueParticipant(participant) {
-  const palette   = getPalette(participant.paletteIndex);
-  const color     = hexToRgb(palette[0]);
-  const darkCount = states.filter(s => !s.litColor && s.progress === 0).length;
-  const share     = Math.max(5, Math.ceil(darkCount * 0.25));
-  pickDarkParticles(share).forEach(idx =>
-    pendingActivations.push({ index: idx, color })
-  );
+function clearAllStates() {
+  for (const st of states) {
+    st.litColor       = null;
+    st.transitionFrom = [15, 18, 30];
+    st.progress       = 0;
+    st.flareT         = 1;
+  }
+  totalLit       = 0;
+  glowRevealed   = false;
+  glowTransition = 0;
+  pingRings      = [];
+  joinedIds.clear();
+  participantByIndex.clear();
+}
+
+function applyParticipant(participant) {
+  joinedIds.add(participant.id);
+  participantByIndex.set(participant.particleIndex, participant);
+  activateParticle(participant.particleIndex, participant.color);
+}
+
+function applyFillEntry(entry) {
+  activateParticle(entry.particleIndex, entry.color);
+}
+
+function triggerPing(particleIndex, color) {
+  const st = states[particleIndex];
+  if (st && st.litColor) st.flareT = 0; // reuse white-hot flare
+  pingRings.push({ particleIndex, color, startMs: performance.now() });
+  if (pingRings.length > MAX_PING_RINGS) {
+    pingRings.splice(0, pingRings.length - MAX_PING_RINGS);
+  }
+}
+
+function startClearOut() {
+  if (totalLit === 0) {
+    clearAllStates();
+    return;
+  }
+  clearingStart = performance.now();
 }
 
 // ---- arc geometry helper ----
@@ -93,24 +132,33 @@ const sketch = (p) => {
       litColor:      null,
       transitionFrom:[15, 18, 30],
       progress:      0,
-      flareT:        1,   // 0 = just activated (white-hot), 1 = settled
+      flareT:        1,
     }));
 
-    fetch('/participants')
-      .then(r => r.json())
-      .then(list => {
-        list.forEach(participant => {
+    // Rehydrate from server.
+    fetch('/state').then(r => r.json()).then(data => {
+      sessionInfo = data.session;
+      // Only rebuild lit state if session is past 'open' OR has participants.
+      if (sessionInfo.state !== 'idle') {
+        data.participants.forEach(participant => {
           joinedIds.add(participant.id);
-          enqueueParticipant(participant);
+          participantByIndex.set(participant.particleIndex, participant);
+          // Apply immediately (no animation on rehydrate)
+          const st = states[participant.particleIndex];
+          if (st && !st.litColor) {
+            st.litColor = participant.color; st.progress = 1; st.flareT = 1;
+            totalLit++;
+          }
         });
-        pendingActivations.forEach(({ index, color }) => {
-          states[index].litColor = color;
-          states[index].progress = 1;
-          states[index].flareT   = 1;
-          totalLit++;
+        data.fillSequence.forEach(entry => {
+          const st = states[entry.particleIndex];
+          if (st && !st.litColor) {
+            st.litColor = entry.color; st.progress = 1; st.flareT = 1;
+            totalLit++;
+          }
         });
-        pendingActivations = [];
-      });
+      }
+    });
 
     connectWebSocket();
   };
@@ -123,16 +171,16 @@ const sketch = (p) => {
     const now = p.millis();
     const t   = now / 1000;
 
-    // ---- queue processing ----
-    if (pendingActivations.length > 0 && now - lastActivateMs >= STAGGER_MS) {
-      const next = pendingActivations.shift();
-      const st   = states[next.index];
-      st.transitionFrom = st.litColor ? [...st.litColor] : [15, 18, 30];
-      st.litColor = next.color;
-      st.progress = 0;
-      st.flareT   = 0;   // trigger white-hot flare
-      totalLit++;
-      lastActivateMs = now;
+    // ---- clear-out animation finalize ----
+    let clearAlpha = 1;
+    if (clearingStart > 0) {
+      const elapsed = performance.now() - clearingStart;
+      if (elapsed >= CLEAR_MS) {
+        clearAllStates();
+        clearingStart = 0;
+      } else {
+        clearAlpha = 1 - elapsed / CLEAR_MS;
+      }
     }
 
     // ---- advance animations ----
@@ -152,7 +200,6 @@ const sketch = (p) => {
     const baseScale = diameter / 360;
 
     // ---- water-surface interference breathe ----
-    // 3 plane waves at different directions + speeds → unpredictable shimmer
     const intensityCap = t < 3 ? 1.0 : 0.7;
     const breatheOf = (pt) => {
       const w1 = Math.sin(t * 1.10 + pt.x *  8.0 + pt.y *  4.2);
@@ -162,7 +209,7 @@ const sketch = (p) => {
       return Math.max(BREATHE_MIN, Math.min(raw, intensityCap));
     };
 
-    // ---- PASS 1: dark arcs (BLEND, very dim) ----
+    // ---- PASS 1: dark arcs ----
     p.blendMode(p.BLEND);
     p.noFill();
     p.strokeCap(p.ROUND);
@@ -192,20 +239,18 @@ const sketch = (p) => {
     // ---- PASS 2: lit arcs ----
     if (totalLit >= TOTAL_PARTICLES && !glowRevealed) {
       glowRevealed = true;
-      if (typeof setLayerButtonsEnabled === 'function') setLayerButtonsEnabled(true);
     }
     if (glowRevealed && glowTransition < 1) {
       glowTransition = Math.min(1, glowTransition + p.deltaTime / GLOW_FADE_MS);
     }
 
-    // ease curve: slow start, accelerate mid, ease out
     const glowEase = glowTransition < 1
-      ? glowTransition * glowTransition * (3 - 2 * glowTransition)  // smoothstep
+      ? glowTransition * glowTransition * (3 - 2 * glowTransition)
       : 1;
 
-    // v2-style BLEND pass — fades OUT during transition, skipped once complete
+    // v2-style BLEND pass — fades OUT during glow transition
     if (glowEase < 1) {
-      const v2Alpha = 1 - glowEase;
+      const v2Alpha = (1 - glowEase) * clearAlpha;
       p.blendMode(p.BLEND);
 
       for (let i = 0; i < fp.particles.length; i++) {
@@ -248,9 +293,8 @@ const sketch = (p) => {
       }
     }
 
-    // neon glow ADD pass — fades IN during transition
+    // Neon glow ADD pass
     if (glowEase > 0) {
-      // Neon glow ADD pass — alpha scaled by glowEase during crossfade
       p.blendMode(p.ADD);
 
       for (let i = 0; i < fp.particles.length; i++) {
@@ -264,7 +308,6 @@ const sketch = (p) => {
         const px    = (pt.x + dx) * radius + cx;
         const py    = (pt.y + dy) * radius + cy;
 
-        // Color lerp during transition
         let r, g, b;
         if (st.progress < 1) {
           const ease       = 1 - Math.pow(1 - st.progress, 3);
@@ -277,14 +320,12 @@ const sketch = (p) => {
           [r, g, b] = st.litColor;
         }
 
-        // Flare: white-hot on first activation
         const flare     = 1 - st.flareT;
         const flarePeak = Math.pow(flare, 0.5);
         r = Math.min(255, r + (255 - r) * flarePeak * 0.9);
         g = Math.min(255, g + (255 - g) * flarePeak * 0.9);
         b = Math.min(255, b + (255 - b) * flarePeak * 0.9);
 
-        // Per-particle shimmer (keeps length pulse + color flare from v2)
         const phase       = i * 2.399;
         const shimmerSlow = Math.sin(t * 0.9 + phase);
         const boost       = Math.max(0, shimmerSlow * 1.2);
@@ -295,41 +336,64 @@ const sketch = (p) => {
         const breathe    = breatheOf(pt);
         const breatheAmt = pt.opacity * breathe;
         const sw         = pt.size * baseScale * 1.6;
-        // Length pulse: interference breathe (global) + shimmer (per-particle)
         const halfLen    = pt.size * baseScale * 4.2 * (1 + shimmerSlow * 0.5);
         const geom       = arcGeom(pt, px, py, halfLen);
+        const ca         = clearAlpha;
 
-        // Layer 1: outer halo
         if (glowLayers[1]) {
           p.strokeWeight(sw * 9);
-          p.stroke(r, g, b, Math.round((breatheAmt * 10 + flarePeak * 18) * glowEase));
+          p.stroke(r, g, b, Math.round((breatheAmt * 10 + flarePeak * 18) * glowEase * ca));
           drawBezier(p, geom);
         }
-
-        // Layer 2: mid glow
         if (glowLayers[2]) {
           p.strokeWeight(sw * 4.5);
-          p.stroke(r, g, b, Math.round((breatheAmt * 28 + flarePeak * 50) * glowEase));
+          p.stroke(r, g, b, Math.round((breatheAmt * 28 + flarePeak * 50) * glowEase * ca));
           drawBezier(p, geom);
         }
-
-        // Layer 3: inner glow
         if (glowLayers[3]) {
           p.strokeWeight(sw * 2.2);
-          p.stroke(r, g, b, Math.round((breatheAmt * 70 + flarePeak * 120) * glowEase));
+          p.stroke(r, g, b, Math.round((breatheAmt * 70 + flarePeak * 120) * glowEase * ca));
           drawBezier(p, geom);
         }
-
-        // Layer 4: core
         if (glowLayers[4]) {
           p.strokeWeight(sw);
-          p.stroke(r, g, b, Math.round((breatheAmt * 190 + flarePeak * 65) * glowEase));
+          p.stroke(r, g, b, Math.round((breatheAmt * 190 + flarePeak * 65) * glowEase * ca));
           drawBezier(p, geom);
         }
       }
     }
 
-    // ---- PASS 3: header (back to BLEND) ----
+    // ---- PASS 2.5: ping rings (ADD) ----
+    if (pingRings.length > 0) {
+      p.blendMode(p.ADD);
+      p.noFill();
+      const nowMs = performance.now();
+      const stillActive = [];
+      for (const ring of pingRings) {
+        const age = nowMs - ring.startMs;
+        if (age >= PING_RING_MS) continue;
+        const ratio = age / PING_RING_MS;
+        const pt = fp.particles[ring.particleIndex];
+        if (!pt) continue;
+        const drift = 0.009;
+        const dx = Math.sin(t * 0.55 + pt.angle * 2.1 + pt.ring * 0.7) * drift;
+        const dy = Math.cos(t * 0.48 + pt.angle * 1.8 + pt.ring * 0.4) * drift;
+        const px = (pt.x + dx) * radius + cx;
+        const py = (pt.y + dy) * radius + cy;
+        const startR = pt.size * baseScale * 5;
+        const endR   = pt.size * baseScale * 28;
+        const rad    = startR + (endR - startR) * ratio;
+        const alpha  = (1 - ratio) * 200;
+        const [r, g, b] = ring.color;
+        p.strokeWeight(3 * (1 - ratio * 0.6));
+        p.stroke(r, g, b, alpha);
+        p.circle(px, py, rad * 2);
+        stillActive.push(ring);
+      }
+      pingRings = stillActive;
+    }
+
+    // ---- PASS 3: header (BLEND) ----
     p.blendMode(p.BLEND);
     drawHeader(p, t);
   };
@@ -351,12 +415,26 @@ const sketch = (p) => {
       p.textSize(10);
       p.fill(51, 65, 85, 160);
       p.text(`${joinedIds.size} คน · ${totalLit} / ${TOTAL_PARTICLES} จุด`, p.width / 2, 78);
-    } else {
+    } else if (sessionInfo && sessionInfo.state === 'open') {
       const a = 80 + Math.sin(t * 1.3) * 30;
       p.textSize(13);
       p.fill(71, 85, 105, a);
       p.textAlign(p.CENTER, p.BOTTOM);
       p.text('รอผู้เข้าร่วมสแกน QR Code...', p.width / 2, p.height - 30);
+    } else if (sessionInfo && sessionInfo.state === 'idle') {
+      const a = 60 + Math.sin(t * 0.9) * 20;
+      p.textSize(12);
+      p.fill(71, 85, 105, a);
+      p.textAlign(p.CENTER, p.BOTTOM);
+      p.text('รอเริ่มเซสชัน', p.width / 2, p.height - 30);
+    }
+
+    // Replay badge
+    if (replayInfo) {
+      p.textAlign(p.LEFT, p.TOP);
+      p.textSize(11);
+      p.fill(244, 63, 94, 230);
+      p.text(`● REPLAY · ${replayInfo.speed}x`, 24, 24);
     }
   }
 };
@@ -364,24 +442,63 @@ const sketch = (p) => {
 // ---- WebSocket ----
 function connectWebSocket() {
   const wsStatus = document.getElementById('ws-status');
+  const setStatus = (color) => { if (wsStatus) wsStatus.style.color = color; };
+
   const protocol  = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const ws        = new WebSocket(`${protocol}//${location.host}`);
 
-  ws.onopen  = () => { wsStatus.style.color = '#166534'; };
+  ws.onopen  = () => setStatus('#166534');
   ws.onclose = () => {
-    wsStatus.style.color = '#7f1d1d';
+    setStatus('#7f1d1d');
     setTimeout(connectWebSocket, 3000);
   };
 
   ws.onmessage = (event) => {
     try {
       const msg = JSON.parse(event.data);
-      if (msg.type === 'new_participant' && !joinedIds.has(msg.data.id)) {
-        joinedIds.add(msg.data.id);
-        enqueueParticipant(msg.data);
-      }
+      handleMessage(msg);
     } catch (e) { console.error('WS parse error', e); }
   };
+}
+
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'session_state': {
+      const prev = sessionInfo ? sessionInfo.state : null;
+      sessionInfo = msg.data;
+      // Transition to 'open' from anything else → clear-out animation.
+      if (sessionInfo.state === 'open' && prev !== 'open') {
+        startClearOut();
+      }
+      break;
+    }
+    case 'new_participant':
+      if (!joinedIds.has(msg.data.id)) applyParticipant(msg.data);
+      break;
+    case 'fill_progress':
+      applyFillEntry(msg.data);
+      break;
+    case 'ping':
+      triggerPing(msg.data.particleIndex, msg.data.color);
+      break;
+    case 'reset':
+      clearAllStates();
+      break;
+    case 'replay_start':
+      replayInfo = msg.data;
+      clearAllStates();
+      break;
+    case 'replay_event':
+      if (msg.data.kind === 'participant') {
+        applyParticipant(msg.data.participant);
+      } else if (msg.data.kind === 'fill') {
+        applyFillEntry(msg.data.fill);
+      }
+      break;
+    case 'replay_end':
+      replayInfo = null;
+      break;
+  }
 }
 
 // ---- Boot ----

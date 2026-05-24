@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Authentic – Identity Wall v4</title>
+  <title>Authentic – Identity Wall</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
@@ -13,108 +13,40 @@
     html, body { width: 100%; height: 100%; overflow: hidden; background: #07070f; }
     canvas { display: block; }
     #ws-status {
-      position: fixed;
-      bottom: 12px;
-      right: 16px;
-      font-family: monospace;
-      font-size: 10px;
-      color: #1e293b;
-      letter-spacing: 1px;
+      position: fixed; bottom: 12px; right: 16px;
+      font-family: monospace; font-size: 10px; color: #1e293b; letter-spacing: 1px;
     }
+    .layer-btn {
+      position: fixed; bottom: 12px;
+      font-family: monospace; font-size: 10px;
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #334155; border-radius: 4px; cursor: pointer; letter-spacing: 1px;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+    #l1-btn { left: 16px; }
+    #l2-btn { left: 52px; }
+    #l3-btn { left: 88px; }
+    #l4-btn { left: 124px; }
+    .layer-on  { color: #7dd3fc !important; border-color: rgba(125,211,252,0.35) !important; background: rgba(125,211,252,0.08) !important; }
+    .layer-off { color: #7f1d1d !important; border-color: rgba(239,68,68,0.2)  !important; background: rgba(239,68,68,0.04) !important; text-decoration: line-through; }
   </style>
 </head>
 <body>
   <div id="ws-status">●</div>
 
-  <button id="test-btn"  onclick="testFill()"   title="Test: fill all particles">test</button>
-  <button id="reset-btn" onclick="testReset()"  title="Reset all particles">reset</button>
-  <button id="add-btn"   onclick="testAddOne()" title="Add 1 participant">+1</button>
-
-  <button id="l1-btn" onclick="toggleLayer(1)" title="Toggle outer halo">L1</button>
-  <button id="l2-btn" onclick="toggleLayer(2)" title="Toggle mid glow">L2</button>
-  <button id="l3-btn" onclick="toggleLayer(3)" title="Toggle inner glow">L3</button>
-  <button id="l4-btn" onclick="toggleLayer(4)" title="Toggle core">L4</button>
-
-  <style>
-    #test-btn, #reset-btn, #add-btn, #l1-btn, #l2-btn, #l3-btn, #l4-btn {
-      position: fixed;
-      bottom: 12px;
-      font-family: monospace;
-      font-size: 10px;
-      padding: 4px 8px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #334155;
-      border-radius: 4px;
-      cursor: pointer;
-      letter-spacing: 1px;
-      transition: color 0.15s, background 0.15s, border-color 0.15s;
-    }
-    #test-btn  { left: 16px; }
-    #reset-btn { left: 64px; }
-    #add-btn   { left: 118px; color: #1e4d2b; border-color: rgba(74,222,128,0.15); }
-    #l1-btn    { left: 168px; }
-    #l2-btn    { left: 204px; }
-    #l3-btn    { left: 240px; }
-    #l4-btn    { left: 276px; }
-    #test-btn:hover, #reset-btn:hover { color: #64748b; background: rgba(255,255,255,0.08); }
-    #add-btn:hover { color: #4ade80; background: rgba(74,222,128,0.08); }
-    .layer-on  { color: #7dd3fc !important; border-color: rgba(125,211,252,0.35) !important; background: rgba(125,211,252,0.08) !important; }
-    .layer-off { color: #7f1d1d !important; border-color: rgba(239,68,68,0.2)  !important; background: rgba(239,68,68,0.04) !important; text-decoration: line-through; }
-  </style>
+  <button class="layer-btn layer-on" id="l1-btn" onclick="toggleLayer(1)" title="Toggle outer halo">L1</button>
+  <button class="layer-btn layer-on" id="l2-btn" onclick="toggleLayer(2)" title="Toggle mid glow">L2</button>
+  <button class="layer-btn layer-on" id="l3-btn" onclick="toggleLayer(3)" title="Toggle inner glow">L3</button>
+  <button class="layer-btn layer-on" id="l4-btn" onclick="toggleLayer(4)" title="Toggle core">L4</button>
 
   <script src="/display-v4.js"></script>
   <script>
-    function testFill() {
-      for (let i = 0; i < states.length; i++) {
-        if (!states[i].litColor && states[i].progress === 0) {
-          const paletteIndex = Math.floor(Math.random() * 8);
-          pendingActivations.push({ index: i, color: hexToRgb(getPalette(paletteIndex)[0]) });
-        }
-      }
-    }
-
-    function testAddOne() {
-      const picks = pickDarkParticles(1);
-      if (picks.length === 0) return;
-      const color = hexToRgb(getPalette(Math.floor(Math.random() * 8))[0]);
-      pendingActivations.push({ index: picks[0], color });
-    }
-
     function toggleLayer(n) {
       glowLayers[n] = !glowLayers[n];
       const btn = document.getElementById('l' + n + '-btn');
-      btn.className = glowLayers[n] ? 'layer-on' : 'layer-off';
-    }
-
-    // Init layer buttons: ON style แต่ disabled จนกว่า glow จะ reveal
-    window.addEventListener('load', () => {
-      [1,2,3,4].forEach(n => {
-        document.getElementById('l' + n + '-btn').className = 'layer-on';
-      });
-      setLayerButtonsEnabled(false);
-    });
-
-    function testReset() {
-      pendingActivations.length = 0;
-      for (let i = 0; i < states.length; i++) {
-        states[i].litColor       = null;
-        states[i].progress       = 0;
-        states[i].flareT         = 1;
-        states[i].transitionFrom = [15, 18, 30];
-      }
-      totalLit        = 0;
-      glowRevealed    = false;
-      glowTransition  = 0;
-      setLayerButtonsEnabled(false);
-    }
-
-    function setLayerButtonsEnabled(enabled) {
-      [1,2,3,4].forEach(n => {
-        const btn = document.getElementById('l' + n + '-btn');
-        btn.disabled  = !enabled;
-        btn.style.opacity = enabled ? '1' : '0.25';
-      });
+      btn.className = 'layer-btn ' + (glowLayers[n] ? 'layer-on' : 'layer-off');
     }
   </script>
 </body>

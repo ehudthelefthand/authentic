@@ -23,321 +23,476 @@
       overflow-x: hidden;
     }
 
-    .header {
-      text-align: center;
-      padding: 36px 0 8px;
-    }
-
-    .camp-label {
-      font-size: 11px;
-      letter-spacing: 3px;
-      color: #64748b;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-
+    .header { text-align: center; padding: 30px 0 8px; }
+    .camp-label { font-size: 11px; letter-spacing: 3px; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
     .camp-name {
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: 6px;
+      font-size: 28px; font-weight: 700; letter-spacing: 6px;
       background: linear-gradient(135deg, #f59e0b, #8b5cf6, #06b6d4);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
       margin-bottom: 4px;
     }
+    .camp-sub { font-size: 13px; color: #64748b; line-height: 1.5; }
 
-    .camp-sub {
-      font-size: 13px;
-      color: #64748b;
-      line-height: 1.5;
+    #canvas-wrap { position: relative; margin: 18px 0 12px; }
+    #canvas-wrap canvas { display: block; border-radius: 50%; }
+    .canvas-ring { position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.08); pointer-events: none; }
+
+    .state-banner {
+      width: 100%; max-width: 320px;
+      text-align: center; font-size: 13px; color: #94a3b8;
+      padding: 10px 14px; border-radius: 10px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+      margin-bottom: 12px;
     }
+    .state-banner.error { color: #fda4af; border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.08); }
+    .state-banner.success { color: #a7f3d0; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.06); }
 
-    /* Canvas section */
-    #canvas-wrap {
-      position: relative;
-      margin: 20px 0 16px;
-    }
-
-    #canvas-wrap canvas {
-      border-radius: 50%;
-      display: block;
-    }
-
-    .canvas-ring {
-      position: absolute;
-      inset: -4px;
-      border-radius: 50%;
-      border: 1.5px solid rgba(255,255,255,0.08);
-      pointer-events: none;
-    }
-
-    /* Form */
     .form-section {
-      width: 100%;
-      max-width: 320px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
+      width: 100%; max-width: 320px;
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
     }
-
-    .input-label {
-      font-size: 13px;
-      color: #94a3b8;
-      align-self: flex-start;
-    }
-
+    .input-label { font-size: 13px; color: #94a3b8; align-self: flex-start; }
     input[type="text"] {
-      width: 100%;
-      background: rgba(255,255,255,0.06);
+      width: 100%; background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 12px;
-      padding: 14px 18px;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 18px;
-      color: #f1f5f9;
-      outline: none;
-      transition: border-color 0.2s;
-      text-align: center;
-      letter-spacing: 1px;
+      border-radius: 12px; padding: 14px 18px;
+      font-family: 'Sarabun', sans-serif; font-size: 18px; color: #f1f5f9;
+      outline: none; transition: border-color 0.2s;
+      text-align: center; letter-spacing: 1px;
     }
+    input[type="text"]:focus { border-color: rgba(139, 92, 246, 0.5); }
+    input[type="text"]::placeholder { color: #334155; }
+    input[type="text"]:disabled { opacity: 0.5; }
 
-    input[type="text"]:focus {
-      border-color: rgba(139, 92, 246, 0.5);
+    .fp-btn-area { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 4px; }
+    .fp-btn-wrap { position: relative; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; }
+    .fp-ring-svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
+    .fp-ring-bg { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 3; }
+    .fp-ring-progress {
+      fill: none; stroke: url(#ringGrad); stroke-width: 3; stroke-linecap: round;
+      stroke-dasharray: 351.9; stroke-dashoffset: 351.9; transition: none;
     }
-
-    input[type="text"]::placeholder {
-      color: #334155;
+    .fp-btn {
+      position: relative; width: 96px; height: 96px; border-radius: 50%; border: none;
+      background: rgba(255,255,255,0.05); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, box-shadow 0.2s;
+      -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none;
     }
-
-    .submit-btn {
-      width: 100%;
-      padding: 16px;
-      border-radius: 14px;
-      border: none;
-      background: linear-gradient(135deg, #7c3aed, #2563eb);
-      color: #fff;
-      font-family: 'Sarabun', sans-serif;
-      font-size: 17px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.2s, transform 0.15s;
-      letter-spacing: 0.5px;
+    .fp-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .fp-btn:not(:disabled) { border: 1px solid rgba(139, 92, 246, 0.25); }
+    .fp-btn.holding {
+      background: rgba(124, 58, 237, 0.15);
+      box-shadow: 0 0 28px rgba(124, 58, 237, 0.35), 0 0 8px rgba(124, 58, 237, 0.2) inset;
     }
-
-    .submit-btn:active { transform: scale(0.97); }
-    .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    /* Success state */
-    .success-view {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: 16px;
-      padding-top: 20px;
+    .fp-btn.pinged {
+      background: rgba(255,255,255,0.18);
+      box-shadow: 0 0 36px rgba(255,255,255,0.45);
     }
+    .fp-icon { width: 52px; height: 52px; color: #94a3b8; transition: color 0.2s; }
+    .fp-btn:not(:disabled) .fp-icon { color: #c4b5fd; }
+    .fp-btn.holding .fp-icon { color: #fff; }
+    .fp-hint { font-size: 12px; color: #475569; letter-spacing: 0.5px; transition: color 0.2s; text-align: center; }
+    .fp-hint.active { color: #a78bfa; }
 
-    .success-view.visible { display: flex; }
-
-    .success-title {
-      font-size: 20px;
-      font-weight: 600;
-      color: #f1f5f9;
-      line-height: 1.4;
+    @keyframes fp-pulse {
+      0%   { box-shadow: 0 0 28px rgba(124,58,237,0.35), 0 0 8px rgba(124,58,237,0.2) inset; }
+      50%  { box-shadow: 0 0 42px rgba(124,58,237,0.55), 0 0 14px rgba(124,58,237,0.3) inset; }
+      100% { box-shadow: 0 0 28px rgba(124,58,237,0.35), 0 0 8px rgba(124,58,237,0.2) inset; }
     }
+    .fp-btn.holding { animation: fp-pulse 1.2s ease-in-out infinite; }
 
-    .success-sub {
-      font-size: 14px;
-      color: #64748b;
-      line-height: 1.6;
-    }
+    .divider { width: 32px; height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0; }
+    .success-name { font-size: 18px; font-weight: 600; color: #f1f5f9; }
+    .success-sub { font-size: 13px; color: #64748b; line-height: 1.6; text-align: center; }
 
-    .divider {
-      width: 32px;
-      height: 1px;
-      background: rgba(255,255,255,0.1);
-      margin: 4px 0;
-    }
+    .reset-link { font-size: 11px; color: #475569; margin-top: 16px; text-decoration: underline; cursor: pointer; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <div class="camp-label">ค่ายโบถส์</div>
+    <div class="camp-label">ค่ายโบสถ์</div>
     <div class="camp-name">AUTHENTIC</div>
     <div class="camp-sub">สะท้อนพระคริสต์ด้วยชีวิตจริง</div>
   </div>
 
-  <!-- Pre-submit view -->
-  <div id="main-view">
-    <div id="canvas-wrap">
-      <div class="canvas-ring"></div>
-    </div>
+  <div id="canvas-wrap">
+    <div class="canvas-ring"></div>
+  </div>
 
-    <div class="form-section">
-      <label class="input-label">ชื่อของคุณ</label>
-      <input type="text" id="name-input" placeholder="พิมพ์ชื่อที่นี่" autocomplete="off" maxlength="30" />
-      <button class="submit-btn" id="submit-btn" disabled>เป็นส่วนหนึ่งของค่าย ✦</button>
+  <div class="state-banner" id="state-banner">กำลังเชื่อมต่อ...</div>
+
+  <!-- Join view (Open + not yet joined) -->
+  <div class="form-section" id="join-view" style="display:none">
+    <label class="input-label">ชื่อของคุณ</label>
+    <input type="text" id="name-input" placeholder="พิมพ์ชื่อที่นี่" autocomplete="off" maxlength="30" />
+
+    <div class="fp-btn-area">
+      <div class="fp-btn-wrap">
+        <svg width="0" height="0" style="position:absolute">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#06b6d4"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <svg class="fp-ring-svg" viewBox="0 0 120 120">
+          <circle class="fp-ring-bg" cx="60" cy="60" r="56"/>
+          <circle class="fp-ring-progress" cx="60" cy="60" r="56" id="fp-ring-progress"/>
+        </svg>
+        <button class="fp-btn" id="fp-btn" disabled>
+          <svg class="fp-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="32" cy="31" r="2.2" fill="currentColor" stroke="none"/>
+            <path d="M 25 31 a 7 7 0 0 1 14 0" stroke-width="2.3"/>
+            <path d="M 20 31 a 12 12 0 0 1 24 0 c 0 4 -2.5 7.5 -6 9.5" stroke-width="2.3"/>
+            <path d="M 15 31 a 17 17 0 0 1 34 0 c 0 6.5 -4 12 -10 15" stroke-width="2.3"/>
+            <path d="M 10 31 a 22 22 0 0 1 44 0 c 0 9 -5.5 16.5 -14 20" stroke-width="2.3"/>
+            <path d="M 6 31 a 26 26 0 0 1 52 0 c 0 11 -7 19.5 -17 23" stroke-width="2.3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="fp-hint" id="fp-hint">พิมพ์ชื่อก่อน</div>
     </div>
   </div>
 
-  <!-- Post-submit view -->
-  <div class="success-view" id="success-view">
-    <div id="success-canvas-wrap"></div>
-    <div class="success-title" id="success-name"></div>
+  <!-- Joined view (already submitted) -->
+  <div class="form-section" id="joined-view" style="display:none">
+    <div class="success-name" id="joined-name"></div>
     <div class="divider"></div>
-    <div class="success-sub">
-      fingerprint ของคุณปรากฏบนหน้าจอแล้ว<br/>
-      คุณเป็นส่วนหนึ่งของค่ายนี้ ✦
+    <div class="success-sub">fingerprint ของคุณปรากฏบนหน้าจอแล้ว ✦<br/>แตะปุ่มเพื่อ ping จุดของคุณ</div>
+
+    <div class="fp-btn-area">
+      <div class="fp-btn-wrap">
+        <svg class="fp-ring-svg" viewBox="0 0 120 120">
+          <circle class="fp-ring-bg" cx="60" cy="60" r="56"/>
+          <circle class="fp-ring-progress" cx="60" cy="60" r="56" id="ping-ring-progress"/>
+        </svg>
+        <button class="fp-btn" id="ping-btn">
+          <svg class="fp-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="32" cy="31" r="2.2" fill="currentColor" stroke="none"/>
+            <path d="M 25 31 a 7 7 0 0 1 14 0" stroke-width="2.3"/>
+            <path d="M 20 31 a 12 12 0 0 1 24 0 c 0 4 -2.5 7.5 -6 9.5" stroke-width="2.3"/>
+            <path d="M 15 31 a 17 17 0 0 1 34 0 c 0 6.5 -4 12 -10 15" stroke-width="2.3"/>
+            <path d="M 10 31 a 22 22 0 0 1 44 0 c 0 9 -5.5 16.5 -14 20" stroke-width="2.3"/>
+            <path d="M 6 31 a 26 26 0 0 1 52 0 c 0 11 -7 19.5 -17 23" stroke-width="2.3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="fp-hint" id="ping-hint">แตะเพื่อ ping</div>
     </div>
+
+    <div class="reset-link" id="reset-link">ไม่ใช่คุณ? เริ่มใหม่</div>
   </div>
 
   <script>
-    // ---- state ----
-    let currentParticleData = null;
-    let currentSeed = 0;
-    let currentPaletteIndex = 0;
-    let submitted = false;
+  // ============== State ==============
+  const STORAGE_KEY = 'authentic.participant';
 
-    function hashStr(str) {
-      let h = 0;
-      for (let i = 0; i < str.length; i++) {
-        h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  let sessionInfo = null;          // { sessionId, state, ... }
+  let me = null;                   // persisted participant
+  const FP_SEED = 42;
+  const TOTAL_PARTICLES = 300;
+  let fpData = null;               // full 300-particle layout for preview
+
+  // ============== Storage ==============
+  function loadMe() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
+    catch { return null; }
+  }
+  function saveMe(p) { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }
+  function clearMe() { localStorage.removeItem(STORAGE_KEY); me = null; }
+
+  // ============== Preview canvas ==============
+  const PREVIEW_SIZE = 220;
+  let pingPulseAt = 0; // ms of last local ping for preview pop
+
+  const previewSketch = (p) => {
+    p.setup = () => {
+      const cnv = p.createCanvas(PREVIEW_SIZE, PREVIEW_SIZE);
+      cnv.parent('canvas-wrap');
+      p.frameRate(40);
+      fpData = generateFingerprintParticles(FP_SEED, TOTAL_PARTICLES);
+    };
+
+    p.draw = () => {
+      p.clear();
+      p.background(7, 7, 15);
+      if (!fpData) return;
+      const t = p.millis() / 1000;
+      drawMiniPrint(p, PREVIEW_SIZE / 2, PREVIEW_SIZE / 2, PREVIEW_SIZE * 0.92, t);
+    };
+  };
+
+  function drawMiniPrint(p, cx, cy, diameter, t) {
+    const radius = diameter / 2;
+    const baseScale = diameter / 360;
+    const myIdx = me ? me.particleIndex : -1;
+    const myColor = me ? me.color : null;
+    const ago = me ? (performance.now() - pingPulseAt) : 9999;
+    const pingBoost = Math.max(0, 1 - ago / 700);
+
+    p.noFill();
+    p.strokeCap(p.ROUND);
+
+    for (let i = 0; i < fpData.particles.length; i++) {
+      const pt = fpData.particles[i];
+      const drift = 0.009;
+      const dx = Math.sin(t * 0.55 + pt.angle * 2.1 + pt.ring * 0.7) * drift;
+      const dy = Math.cos(t * 0.48 + pt.angle * 1.8 + pt.ring * 0.4) * drift;
+      const px = (pt.x + dx) * radius + cx;
+      const py = (pt.y + dy) * radius + cy;
+
+      const isMe = (i === myIdx);
+      if (isMe && myColor) {
+        const [r, g, b] = myColor;
+        const flash = pingBoost;
+        const rr = Math.min(255, r + (255 - r) * flash);
+        const gg = Math.min(255, g + (255 - g) * flash);
+        const bb = Math.min(255, b + (255 - b) * flash);
+        p.stroke(rr, gg, bb, 230);
+        p.strokeWeight(pt.size * baseScale * 2.6);
+      } else {
+        p.stroke(22, 26, 44, 60);
+        p.strokeWeight(pt.size * baseScale * 1.4);
       }
-      return Math.abs(h);
+
+      const cosA = Math.cos(pt.tangentAngle);
+      const sinA = Math.sin(pt.tangentAngle);
+      const half = pt.size * baseScale * 3.8 * (isMe ? (1 + pingBoost * 0.4) : 1);
+      p.line(px - cosA * half, py - sinA * half, px + cosA * half, py + sinA * half);
+    }
+  }
+
+  new p5(previewSketch);
+
+  // ============== Views ==============
+  const banner    = document.getElementById('state-banner');
+  const joinView  = document.getElementById('join-view');
+  const joinedView= document.getElementById('joined-view');
+  const nameInput = document.getElementById('name-input');
+  const fpBtn     = document.getElementById('fp-btn');
+  const fpHint    = document.getElementById('fp-hint');
+  const ringEl    = document.getElementById('fp-ring-progress');
+  const pingBtn   = document.getElementById('ping-btn');
+  const pingRing  = document.getElementById('ping-ring-progress');
+  const pingHint  = document.getElementById('ping-hint');
+  const joinedName= document.getElementById('joined-name');
+  const resetLink = document.getElementById('reset-link');
+
+  const RING_C = 2 * Math.PI * 56;
+  function setProgress(el, ratio) { el.style.strokeDashoffset = RING_C * (1 - ratio); }
+
+  function setBanner(text, kind) {
+    banner.textContent = text;
+    banner.className = 'state-banner' + (kind ? ' ' + kind : '');
+    banner.style.display = text ? 'block' : 'none';
+  }
+
+  function render() {
+    if (!sessionInfo) {
+      setBanner('กำลังเชื่อมต่อ...');
+      joinView.style.display = 'none';
+      joinedView.style.display = 'none';
+      return;
     }
 
-    // ---- p5 preview sketch ----
-    const PREVIEW_SIZE = 200;
+    // Stale identity from a previous session?
+    if (me && me.sessionId !== sessionInfo.sessionId) {
+      clearMe();
+    }
 
-    const previewSketch = (p) => {
-      p.setup = () => {
-        const cnv = p.createCanvas(PREVIEW_SIZE, PREVIEW_SIZE);
-        cnv.parent('canvas-wrap');
-        p.frameRate(40);
-      };
+    const s = sessionInfo.state;
+    const joined = !!me;
 
-      p.draw = () => {
-        p.clear();
-        p.background(7, 7, 15);
+    if (joined) {
+      joinView.style.display = 'none';
+      joinedView.style.display = 'flex';
+      joinedName.textContent = me.name;
+      if (s === 'open')   setBanner(`เซสชันเปิดอยู่ · ${sessionInfo.participantCount} / ${sessionInfo.capacity}`, 'success');
+      else if (s === 'closed') setBanner('เซสชันปิดแล้ว · ยังกด ping ได้', 'success');
+      else if (s === 'ended')  setBanner('เซสชันจบแล้ว · ยังกด ping ได้', 'success');
+      else                setBanner('รอเซสชันถัดไป');
+      return;
+    }
 
-        if (!currentParticleData) {
-          // Idle: faint placeholder rings
-          p.noFill();
-          p.strokeWeight(0.5);
-          for (let r = 20; r < PREVIEW_SIZE / 2; r += 22) {
-            p.stroke(255, 255, 255, 10);
-            p.ellipse(PREVIEW_SIZE / 2, PREVIEW_SIZE / 2, r * 2, r * 1.4);
-          }
-          return;
-        }
+    joinedView.style.display = 'none';
 
-        const t = p.millis() / 1000;
-        drawFingerprint(
-          p,
-          PREVIEW_SIZE / 2, PREVIEW_SIZE / 2,
-          PREVIEW_SIZE * 0.88,
-          currentPaletteIndex,
-          currentParticleData.particles,
-          t,
-          1
-        );
-      };
-    };
-
-    new p5(previewSketch);
-
-    // ---- p5 success sketch ----
-    const SUCCESS_SIZE = 260;
-    let successParticleData = null;
-    let successPaletteIndex = 0;
-
-    const successSketch = (p) => {
-      p.setup = () => {
-        const cnv = p.createCanvas(SUCCESS_SIZE, SUCCESS_SIZE);
-        cnv.parent('success-canvas-wrap');
-        p.frameRate(40);
-      };
-
-      p.draw = () => {
-        p.clear();
-        p.background(7, 7, 15);
-        if (!successParticleData) return;
-        const t = p.millis() / 1000;
-        drawFingerprint(
-          p,
-          SUCCESS_SIZE / 2, SUCCESS_SIZE / 2,
-          SUCCESS_SIZE * 0.88,
-          successPaletteIndex,
-          successParticleData.particles,
-          t,
-          1
-        );
-      };
-    };
-
-    new p5(successSketch);
-
-    // ---- Input handling ----
-    const nameInput = document.getElementById('name-input');
-    const submitBtn = document.getElementById('submit-btn');
-
-    let debounceTimer = null;
-
-    nameInput.addEventListener('input', () => {
-      const name = nameInput.value.trim();
-      submitBtn.disabled = name.length < 1;
-
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        if (name.length > 0) {
-          const seed = hashStr(name + 'preview');
-          currentSeed = seed;
-          currentPaletteIndex = hashStr(name) % 8;
-          currentParticleData = generateFingerprintParticles(seed);
-        } else {
-          currentParticleData = null;
-        }
-      }, 250);
-    });
-
-    // ---- Submit ----
-    submitBtn.addEventListener('click', async () => {
-      if (submitted) return;
-      const name = nameInput.value.trim();
-      if (!name) return;
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'กำลังส่ง...';
-
-      try {
-        const res = await fetch('/join', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name }),
-        });
-
-        if (!res.ok) throw new Error('server error');
-        const participant = await res.json();
-
-        submitted = true;
-
-        // Show success view
-        successParticleData = generateFingerprintParticles(participant.seed);
-        successPaletteIndex = participant.paletteIndex;
-
-        document.getElementById('success-name').textContent = participant.name;
-        document.getElementById('main-view').style.display = 'none';
-        document.getElementById('success-view').classList.add('visible');
-
-      } catch (err) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'เป็นส่วนหนึ่งของค่าย ✦';
-        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+    if (s === 'idle') {
+      joinView.style.display = 'none';
+      setBanner('รอเริ่มเซสชัน...');
+    } else if (s === 'open') {
+      if (sessionInfo.participantCount >= sessionInfo.capacity) {
+        joinView.style.display = 'none';
+        setBanner('เซสชันเต็มแล้ว ขออภัย', 'error');
+      } else {
+        joinView.style.display = 'flex';
+        setBanner(`เซสชันเปิดอยู่ · เหลือ ${sessionInfo.capacity - sessionInfo.participantCount} จุด`, 'success');
       }
-    });
+    } else if (s === 'closed' || s === 'ended') {
+      joinView.style.display = 'none';
+      setBanner('เซสชันปิดแล้ว · คุณพลาดเซสชันนี้', 'error');
+    }
+  }
+
+  // ============== WebSocket ==============
+  function connectWS() {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${location.host}`);
+    ws.onmessage = ev => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'session_state') {
+          sessionInfo = msg.data;
+          render();
+        } else if (msg.type === 'new_participant') {
+          if (sessionInfo) sessionInfo.participantCount++;
+          render();
+        } else if (msg.type === 'reset') {
+          clearMe();
+          render();
+        }
+      } catch (e) {}
+    };
+    ws.onclose = () => setTimeout(connectWS, 3000);
+  }
+
+  // ============== Hold-to-submit ==============
+  const HOLD_MS = 5000;
+  let holdStart = null, holdRaf = null, submitting = false;
+
+  function tickHold() {
+    const elapsed = Date.now() - holdStart;
+    const ratio = Math.min(elapsed / HOLD_MS, 1);
+    setProgress(ringEl, ratio);
+    if (ratio < 1) holdRaf = requestAnimationFrame(tickHold);
+    else doSubmit();
+  }
+
+  function startHold() {
+    if (fpBtn.disabled || submitting) return;
+    holdStart = Date.now();
+    fpBtn.classList.add('holding');
+    fpHint.textContent = 'กำลังสแกน...';
+    fpHint.classList.add('active');
+    holdRaf = requestAnimationFrame(tickHold);
+  }
+
+  function cancelHold() {
+    if (!holdStart) return;
+    holdStart = null;
+    cancelAnimationFrame(holdRaf);
+    fpBtn.classList.remove('holding');
+    setProgress(ringEl, 0);
+    if (!submitting) fpHint.textContent = 'กดค้างเพื่อสแกน';
+  }
+
+  nameInput.addEventListener('input', () => {
+    const name = nameInput.value.trim();
+    fpBtn.disabled = name.length < 1;
+    fpHint.textContent = name.length < 1 ? 'พิมพ์ชื่อก่อน' : 'กดค้างเพื่อสแกน';
+    fpHint.classList.toggle('active', name.length > 0);
+  });
+
+  fpBtn.addEventListener('pointerdown', e => { e.preventDefault(); fpBtn.setPointerCapture(e.pointerId); startHold(); });
+  fpBtn.addEventListener('pointerup', cancelHold);
+  fpBtn.addEventListener('pointercancel', cancelHold);
+  fpBtn.addEventListener('pointerleave', cancelHold);
+
+  async function doSubmit() {
+    if (submitting) return;
+    submitting = true;
+    const name = nameInput.value.trim();
+    fpBtn.disabled = true;
+    fpHint.textContent = 'กำลังส่ง...';
+    try {
+      const res = await fetch('/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === 'session_full') {
+          alert('ขออภัย เซสชันเต็มแล้ว');
+        } else if (data.error === 'session_not_open') {
+          alert('เซสชันยังไม่เปิด กรุณารอ');
+        } else {
+          alert('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+        }
+        throw new Error(data.error);
+      }
+      me = data;
+      saveMe(me);
+      render();
+    } catch (e) {
+      fpBtn.disabled = false;
+      setProgress(ringEl, 0);
+      fpHint.textContent = 'กดค้างเพื่อสแกน';
+    } finally {
+      submitting = false;
+      cancelHold();
+    }
+  }
+
+  // ============== Ping ==============
+  const PING_COOLDOWN_MS = 3000;
+  let pingCooldownUntil = 0;
+  let pingCooldownRaf = null;
+
+  function tickCooldown() {
+    const remaining = pingCooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setProgress(pingRing, 0);
+      pingBtn.disabled = false;
+      pingHint.textContent = 'แตะเพื่อ ping';
+      pingHint.classList.add('active');
+      return;
+    }
+    const ratio = 1 - remaining / PING_COOLDOWN_MS;
+    setProgress(pingRing, ratio);
+    pingCooldownRaf = requestAnimationFrame(tickCooldown);
+  }
+
+  pingBtn.addEventListener('click', async () => {
+    if (!me) return;
+    if (Date.now() < pingCooldownUntil) return;
+    pingBtn.disabled = true;
+    pingBtn.classList.add('pinged');
+    setTimeout(() => pingBtn.classList.remove('pinged'), 500);
+    pingPulseAt = performance.now();
+    pingHint.textContent = 'ส่ง ping...';
+    try {
+      const res = await fetch('/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participantId: me.id }),
+      });
+      if (res.status === 429) {
+        const data = await res.json();
+        pingCooldownUntil = Date.now() + (data.retryMs || PING_COOLDOWN_MS);
+      } else if (!res.ok) {
+        pingHint.textContent = 'ping ไม่สำเร็จ';
+      } else {
+        pingCooldownUntil = Date.now() + PING_COOLDOWN_MS;
+      }
+    } catch {
+      pingCooldownUntil = Date.now() + PING_COOLDOWN_MS;
+    }
+    tickCooldown();
+  });
+
+  resetLink.addEventListener('click', () => {
+    if (!confirm('เริ่มใหม่? ข้อมูลการเข้าร่วมของคุณจะหายไป')) return;
+    clearMe();
+    render();
+  });
+
+  // ============== Boot ==============
+  me = loadMe();
+  fetch('/session').then(r => r.json()).then(s => { sessionInfo = s; render(); });
+  connectWS();
   </script>
 </body>
 </html>

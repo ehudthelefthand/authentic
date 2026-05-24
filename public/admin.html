@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Authentic · Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #07070f; color: #e2e8f0;
+      font-family: 'Sarabun', system-ui, sans-serif;
+      min-height: 100dvh; padding: 28px 32px 60px;
+    }
+    h1 { font-size: 22px; font-weight: 700; letter-spacing: 4px; margin-bottom: 4px;
+      background: linear-gradient(135deg, #f59e0b, #8b5cf6, #06b6d4);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .sub { color: #64748b; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1100px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px; padding: 20px;
+    }
+    .card h2 { font-size: 14px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #94a3b8; margin-bottom: 14px; }
+
+    .status-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .badge {
+      display: inline-block; padding: 4px 12px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+    }
+    .badge.idle    { background: rgba(100,116,139,0.2); color: #94a3b8; }
+    .badge.open    { background: rgba(16,185,129,0.18); color: #6ee7b7; }
+    .badge.closed  { background: rgba(245,158,11,0.18); color: #fcd34d; }
+    .badge.ended   { background: rgba(139,92,246,0.2);  color: #c4b5fd; }
+    .badge.replay  { background: rgba(244,63,94,0.18); color: #fda4af; }
+
+    .counts { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #cbd5e1; line-height: 1.7; }
+    .counts span.k { color: #64748b; }
+
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    button {
+      font-family: 'Sarabun', sans-serif;
+      background: rgba(124,58,237,0.18); border: 1px solid rgba(124,58,237,0.4);
+      color: #e2e8f0; padding: 10px 16px; border-radius: 10px; cursor: pointer;
+      font-size: 14px; font-weight: 600; letter-spacing: 0.5px; transition: all 0.15s;
+    }
+    button:hover:not(:disabled) { background: rgba(124,58,237,0.28); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    button.danger { background: rgba(244,63,94,0.15); border-color: rgba(244,63,94,0.45); }
+    button.danger:hover:not(:disabled) { background: rgba(244,63,94,0.28); }
+    button.primary { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.45); }
+    button.primary:hover:not(:disabled) { background: rgba(16,185,129,0.32); }
+
+    .qr-wrap { text-align: center; }
+    .qr-wrap canvas { background: white; padding: 10px; border-radius: 10px; display: inline-block; }
+    .qr-url { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #94a3b8; margin-top: 12px; word-break: break-all; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; color: #64748b; font-weight: 600; padding: 8px 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+    td { padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+    td.actions { text-align: right; }
+    td.actions button { padding: 5px 10px; font-size: 12px; }
+    select {
+      background: rgba(255,255,255,0.05); color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+      padding: 4px 8px; font-size: 12px;
+    }
+    .empty { color: #475569; font-size: 13px; padding: 16px 0; text-align: center; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: rgba(15,23,42,0.96); border: 1px solid rgba(255,255,255,0.12);
+      color: #e2e8f0; padding: 10px 20px; border-radius: 10px; font-size: 13px;
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <h1>AUTHENTIC</h1>
+  <div class="sub">Admin Console</div>
+
+  <div class="grid">
+    <!-- Status -->
+    <div class="card">
+      <h2>Session</h2>
+      <div class="status-row">
+        <span class="badge idle" id="state-badge">—</span>
+        <span id="timer" style="color:#64748b; font-family: 'JetBrains Mono', monospace; font-size: 13px;"></span>
+      </div>
+      <div class="counts" id="counts">
+        <div><span class="k">participants:</span> <span id="c-part">0</span> / <span id="c-cap">300</span></div>
+        <div><span class="k">session id:</span> <span id="c-sid">—</span></div>
+        <div><span class="k">opened at:</span> <span id="c-open">—</span></div>
+        <div><span class="k">closed at:</span> <span id="c-close">—</span></div>
+      </div>
+
+      <div class="btn-row" style="margin-top: 18px;">
+        <button class="primary" id="btn-open">Open Session</button>
+        <button id="btn-close">Close Session</button>
+        <button id="btn-fill">Fill the Gap</button>
+        <button class="danger" id="btn-reset">Reset Everything</button>
+      </div>
+    </div>
+
+    <!-- QR -->
+    <div class="card qr-wrap">
+      <h2>Mobile QR</h2>
+      <div id="qr-canvas" style="display:inline-block; padding:10px; background:#fff; border-radius:10px;"></div>
+      <div class="qr-url" id="qr-url"></div>
+    </div>
+
+    <!-- Snapshots -->
+    <div class="card" style="grid-column: 1 / -1;">
+      <h2>Snapshots</h2>
+      <table id="snap-table">
+        <thead>
+          <tr>
+            <th>Closed</th><th>Participants</th><th>Filled</th><th>Session</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="snap-body"></tbody>
+      </table>
+      <div class="empty" id="snap-empty" style="display:none">No snapshots yet. Close a session to create one.</div>
+      <div class="btn-row" style="margin-top: 12px;">
+        <button id="btn-stop-replay">Stop Replay</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  // ============== Token from URL ==============
+  // URL is /admin/<token>
+  const TOKEN = location.pathname.split('/').filter(Boolean)[1];
+  const API = (p) => `/admin/${TOKEN}${p}`;
+
+  // ============== Helpers ==============
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  async function apiPost(path, body) {
+    const res = await fetch(API(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+  async function apiGet(path) {
+    const res = await fetch(API(path));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+  async function apiDelete(path) {
+    const res = await fetch(API(path), { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  // ============== Status render ==============
+  let sessionInfo = null;
+  let replayInfo = null;
+  let timerRaf = null;
+
+  const elBadge = document.getElementById('state-badge');
+  const elTimer = document.getElementById('timer');
+  const elPart  = document.getElementById('c-part');
+  const elCap   = document.getElementById('c-cap');
+  const elSid   = document.getElementById('c-sid');
+  const elOpen  = document.getElementById('c-open');
+  const elClose = document.getElementById('c-close');
+
+  const btnOpen  = document.getElementById('btn-open');
+  const btnClose = document.getElementById('btn-close');
+  const btnFill  = document.getElementById('btn-fill');
+  const btnReset = document.getElementById('btn-reset');
+  const btnStopReplay = document.getElementById('btn-stop-replay');
+
+  function fmtTime(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleTimeString();
+  }
+
+  function renderStatus() {
+    if (!sessionInfo) return;
+    const s = replayInfo ? 'replay' : sessionInfo.state;
+    elBadge.className = 'badge ' + s;
+    elBadge.textContent = replayInfo ? `REPLAY · ${replayInfo.speed}x` : s;
+
+    elPart.textContent = sessionInfo.participantCount;
+    elCap.textContent  = sessionInfo.capacity;
+    elSid.textContent  = sessionInfo.sessionId;
+    elOpen.textContent = fmtTime(sessionInfo.openedAt);
+    elClose.textContent = fmtTime(sessionInfo.closedAt);
+
+    btnOpen.disabled  = sessionInfo.state === 'open' || !!replayInfo;
+    btnClose.disabled = sessionInfo.state !== 'open' || !!replayInfo;
+    btnFill.disabled  = sessionInfo.state !== 'closed' || !!replayInfo;
+    btnReset.disabled = !!replayInfo;
+    btnStopReplay.disabled = !replayInfo;
+  }
+
+  function startTimer() {
+    if (timerRaf) return;
+    const tick = () => {
+      if (sessionInfo && sessionInfo.openedAt && sessionInfo.state === 'open') {
+        const ms = Date.now() - new Date(sessionInfo.openedAt).getTime();
+        const s = Math.floor(ms / 1000);
+        const m = Math.floor(s / 60);
+        elTimer.textContent = `${m}:${String(s % 60).padStart(2, '0')} elapsed`;
+      } else {
+        elTimer.textContent = '';
+      }
+      timerRaf = setTimeout(tick, 1000);
+    };
+    tick();
+  }
+
+  // ============== Buttons ==============
+  btnOpen.addEventListener('click', async () => {
+    if (sessionInfo && sessionInfo.participantCount > 0 &&
+        !confirm('This will clear the current session. Continue?')) return;
+    try { await apiPost('/open'); toast('Session opened'); } catch (e) { toast(e.message); }
+  });
+  btnClose.addEventListener('click', async () => {
+    try { await apiPost('/close'); toast('Session closed · snapshot saved'); refreshSnapshots(); }
+    catch (e) { toast(e.message); }
+  });
+  btnFill.addEventListener('click', async () => {
+    try { await apiPost('/fill'); toast('Filling the gap...'); }
+    catch (e) { toast(e.message); }
+  });
+  btnReset.addEventListener('click', async () => {
+    if (!confirm('Reset everything? Current session will be wiped (snapshots stay on disk).')) return;
+    try { await apiPost('/reset'); toast('Reset complete'); }
+    catch (e) { toast(e.message); }
+  });
+  btnStopReplay.addEventListener('click', async () => {
+    try { await apiPost('/replay/stop'); toast('Replay stopped'); }
+    catch (e) { toast(e.message); }
+  });
+
+  // ============== Snapshots ==============
+  async function refreshSnapshots() {
+    try {
+      const list = await apiGet('/snapshots');
+      const body = document.getElementById('snap-body');
+      const empty = document.getElementById('snap-empty');
+      body.innerHTML = '';
+      if (!list.length) {
+        empty.style.display = 'block';
+        document.getElementById('snap-table').style.display = 'none';
+        return;
+      }
+      empty.style.display = 'none';
+      document.getElementById('snap-table').style.display = 'table';
+      for (const s of list) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${fmtTime(s.closedAt)}</td>
+          <td>${s.participantCount ?? '—'}</td>
+          <td>${s.fillCount ?? 0}</td>
+          <td style="font-family:'JetBrains Mono',monospace; color:#64748b; font-size:11px;">${s.sessionId || '—'}</td>
+          <td class="actions">
+            <select data-name="${s.name}" class="speed-sel">
+              <option value="1">1x</option>
+              <option value="4" selected>4x</option>
+              <option value="10">10x</option>
+            </select>
+            <button data-replay="${s.name}">Replay</button>
+            <button data-download="${s.name}">Download</button>
+            <button class="danger" data-delete="${s.name}">Delete</button>
+          </td>`;
+        body.appendChild(tr);
+      }
+      body.querySelectorAll('[data-replay]').forEach(b => b.addEventListener('click', async () => {
+        const name = b.getAttribute('data-replay');
+        const sel  = b.parentElement.querySelector('.speed-sel');
+        const speed = Number(sel.value);
+        try { await apiPost(`/snapshots/${encodeURIComponent(name)}/replay`, { speed }); toast('Replay started'); }
+        catch (e) { toast(e.message); }
+      }));
+      body.querySelectorAll('[data-download]').forEach(b => b.addEventListener('click', () => {
+        const name = b.getAttribute('data-download');
+        const a = document.createElement('a');
+        a.href = API(`/snapshots/${encodeURIComponent(name)}`);
+        a.download = name;
+        a.click();
+      }));
+      body.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', async () => {
+        const name = b.getAttribute('data-delete');
+        if (!confirm(`Delete snapshot ${name}?`)) return;
+        try { await apiDelete(`/snapshots/${encodeURIComponent(name)}`); toast('Deleted'); refreshSnapshots(); }
+        catch (e) { toast(e.message); }
+      }));
+    } catch (e) { toast(e.message); }
+  }
+
+  // ============== QR ==============
+  function renderQR() {
+    const url = `${location.protocol}//${location.host}/mobile.html`;
+    document.getElementById('qr-url').textContent = url;
+    const el = document.getElementById('qr-canvas');
+    el.innerHTML = '';
+    new QRCode(el, { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+  }
+
+  // ============== WebSocket ==============
+  function connectWS() {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${location.host}`);
+    ws.onmessage = ev => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'session_state') {
+          sessionInfo = msg.data;
+          renderStatus();
+        } else if (msg.type === 'new_participant') {
+          if (sessionInfo) { sessionInfo.participantCount++; renderStatus(); }
+        } else if (msg.type === 'fill_progress') {
+          if (sessionInfo) { sessionInfo.participantCount = Math.min(sessionInfo.capacity, sessionInfo.participantCount); }
+        } else if (msg.type === 'replay_start') {
+          replayInfo = msg.data; renderStatus();
+        } else if (msg.type === 'replay_end') {
+          replayInfo = null; renderStatus();
+        } else if (msg.type === 'reset') {
+          refreshSnapshots();
+        }
+      } catch {}
+    };
+    ws.onclose = () => setTimeout(connectWS, 3000);
+  }
+
+  // ============== Boot ==============
+  renderQR();
+  refreshSnapshots();
+  apiGet('/snapshots').catch(() => {}); // warmup
+  fetch('/session').then(r => r.json()).then(s => { sessionInfo = s; renderStatus(); });
+  startTimer();
+  connectWS();
+</script>
+</body>
+</html>

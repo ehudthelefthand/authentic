@@ -1,0 +1,3 @@
+- choose the color before ping
+- ping and flash
+- everyone can generate their own version of the figer print. they can choose the color, the line thickness, the line lenght
