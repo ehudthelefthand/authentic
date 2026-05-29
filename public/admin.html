@@ -72,6 +72,11 @@
     button.danger:hover:not(:disabled) { background: rgba(244,63,94,0.28); }
     button.primary { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.45); }
     button.primary:hover:not(:disabled) { background: rgba(16,185,129,0.32); }
+    /* Toggle visual: .toggle-on = currently ON (will turn off on click); .toggle-off = currently OFF. */
+    button.toggle-on  { background: rgba(244,63,94,0.22); border-color: rgba(244,63,94,0.6); color: #fecaca; box-shadow: 0 0 12px rgba(244,63,94,0.25); }
+    button.toggle-on:hover:not(:disabled)  { background: rgba(244,63,94,0.34); }
+    button.toggle-off { background: rgba(100,116,139,0.18); border-color: rgba(100,116,139,0.45); color: #cbd5e1; }
+    button.toggle-off:hover:not(:disabled) { background: rgba(100,116,139,0.28); }
 
     .qr-wrap { text-align: center; }
     .qr-wrap canvas { background: white; padding: 10px; border-radius: 10px; display: inline-block; }
@@ -130,6 +135,8 @@
         <button class="primary" id="btn-open">Open Session</button>
         <button id="btn-close">Close Session</button>
         <button id="btn-fill">Fill the Gap</button>
+        <button id="btn-verdict-overlay">Hide Verdict Overlay</button>
+        <button id="btn-error-alarm">Stop Error Alarm</button>
         <button class="danger" id="btn-reset">Reset Everything</button>
       </div>
     </div>
@@ -213,6 +220,8 @@
   const btnClose = document.getElementById('btn-close');
   const btnFill  = document.getElementById('btn-fill');
   const btnReset = document.getElementById('btn-reset');
+  const btnVerdictOverlay = document.getElementById('btn-verdict-overlay');
+  const btnErrorAlarm = document.getElementById('btn-error-alarm');
   const modeBtns = Array.from(document.querySelectorAll('.mode-btn'));
   const modeHint = document.getElementById('mode-hint');
   const btnStopReplay = document.getElementById('btn-stop-replay');
@@ -239,6 +248,20 @@
     btnClose.disabled = sessionInfo.state !== 'open' || !!replayInfo;
     btnFill.disabled  = sessionInfo.state !== 'closed' || !!replayInfo;
     btnReset.disabled = !!replayInfo;
+    btnVerdictOverlay.disabled = sessionInfo.state !== 'verdict' || !!replayInfo;
+    btnVerdictOverlay.textContent = sessionInfo.verdictOverlayVisible
+      ? 'Hide Verdict Overlay'
+      : 'Show Verdict Overlay';
+    // Alarm only meaningful in verdict + opening + overlay visible.
+    btnErrorAlarm.disabled = sessionInfo.state !== 'verdict'
+      || sessionInfo.ceremonyMode !== 'opening'
+      || !sessionInfo.verdictOverlayVisible
+      || !!replayInfo;
+    btnErrorAlarm.textContent = sessionInfo.errorAlarmActive
+      ? '🔊 Alarm ON · Stop'
+      : '🔇 Alarm OFF · Start';
+    btnErrorAlarm.classList.toggle('toggle-on', sessionInfo.errorAlarmActive);
+    btnErrorAlarm.classList.toggle('toggle-off', !sessionInfo.errorAlarmActive);
     btnStopReplay.disabled = !replayInfo;
 
     const modeEditable = sessionInfo.state === 'idle' && !replayInfo;
@@ -283,6 +306,20 @@
     if (!confirm('Reset everything? Current session will be wiped (snapshots stay on disk).')) return;
     try { await apiPost('/reset'); toast('Reset complete'); }
     catch (e) { toast(e.message); }
+  });
+  btnErrorAlarm.addEventListener('click', async () => {
+    const next = !sessionInfo.errorAlarmActive;
+    try {
+      await apiPost('/error-alarm', { active: next });
+      toast(next ? 'Error alarm started' : 'Error alarm stopped');
+    } catch (e) { toast(e.message); }
+  });
+  btnVerdictOverlay.addEventListener('click', async () => {
+    const next = !sessionInfo.verdictOverlayVisible;
+    try {
+      await apiPost('/verdict-overlay', { visible: next });
+      toast(next ? 'Verdict overlay shown' : 'Verdict overlay hidden');
+    } catch (e) { toast(e.message); }
   });
   btnStopReplay.addEventListener('click', async () => {
     try { await apiPost('/replay/stop'); toast('Replay stopped'); }

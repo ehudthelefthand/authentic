@@ -26,6 +26,7 @@ const participantByIndex = new Map(); // particleIndex -> participant
 
 let sessionInfo = null;
 let replayInfo = null;
+let lastOverlayShown = false;
 
 let clearingStart = 0; // ms; if > 0, we're animating a clear-out
 let pingRings = [];    // { particleIndex, color: [r,g,b], startMs }
@@ -114,23 +115,50 @@ function stopScanLoop() {
   scanLoopNode = null;
 }
 
-function playError() {
-  if (!audioCtx) return;
+// Error alarm: looping short buzzes ("แอด ๆ ๆ ๆ"). Scheduled entirely on the
+// Web Audio clock — one pair of square oscillators run continuously, a gain
+// envelope chops them into pulses. start/stop are idempotent.
+let alarmNode = null;
+const ALARM_PERIOD = 2.0;   // seconds per pulse (1s beep + 1s gap)
+const ALARM_ON     = 1.0;   // audible portion of each pulse
+const ALARM_PEAK   = 0.28;
+function startErrorAlarm() {
+  if (alarmNode || !audioCtx) return;
   const ctx = audioCtx;
   const o1 = ctx.createOscillator();
   const o2 = ctx.createOscillator();
   o1.type = 'square'; o2.type = 'square';
   o1.frequency.value = 110;
-  o2.frequency.value = 113; // slight detune
+  o2.frequency.value = 113;
   const g = ctx.createGain();
   g.gain.setValueAtTime(0.0001, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + 0.02);
-  g.gain.setValueAtTime(0.28, ctx.currentTime + 0.45);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.62);
   o1.connect(g); o2.connect(g);
   g.connect(ctx.destination);
   o1.start(); o2.start();
-  o1.stop(ctx.currentTime + 0.65); o2.stop(ctx.currentTime + 0.65);
+  // Schedule a few minutes of pulses upfront; if the alarm runs past that we
+  // can reschedule, but in practice the ceremony is shorter than this window.
+  const pulses = Math.ceil((10 * 60) / ALARM_PERIOD); // 10 minutes
+  let t = ctx.currentTime + 0.01;
+  for (let i = 0; i < pulses; i++) {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(ALARM_PEAK, t + 0.008);
+    g.gain.setValueAtTime(ALARM_PEAK, t + ALARM_ON - 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + ALARM_ON);
+    t += ALARM_PERIOD;
+  }
+  alarmNode = { o1, o2, g };
+}
+function stopErrorAlarm() {
+  if (!alarmNode) return;
+  const ctx = audioCtx;
+  const { o1, o2, g } = alarmNode;
+  try {
+    g.gain.cancelScheduledValues(ctx.currentTime);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    o1.stop(ctx.currentTime + 0.05);
+    o2.stop(ctx.currentTime + 0.05);
+  } catch (e) {}
+  alarmNode = null;
 }
 
 function playSuccess() {
@@ -140,7 +168,7 @@ function playSuccess() {
   const g = ctx.createGain();
   g.gain.setValueAtTime(0.0001, ctx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.05);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.3);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 3.0);
   g.connect(ctx.destination);
   for (const f of freqs) {
     const o = ctx.createOscillator();
@@ -148,7 +176,7 @@ function playSuccess() {
     o.frequency.value = f;
     o.connect(g);
     o.start();
-    o.stop(ctx.currentTime + 1.35);
+    o.stop(ctx.currentTime + 3.05);
   }
 }
 
@@ -637,12 +665,27 @@ function handleMessage(msg) {
       } else if (prev === 'scanning' && sessionInfo.state !== 'scanning') {
         stopScanLoop();
       }
+      // Re-show the overlay only on actual transitions so toggling unrelated
+      // flags (alarm, etc) doesn't restart the glitch animation.
+      const prevOverlayShown = (prev === 'verdict') && lastOverlayShown;
+      const wantOverlayShown = sessionInfo.state === 'verdict' && sessionInfo.verdictOverlayVisible;
       if (sessionInfo.state === 'verdict' && prev !== 'verdict') {
         stopScanLoop();
-        showVerdict(sessionInfo.ceremonyMode);
-        if (sessionInfo.ceremonyMode === 'opening') playError();
-        else playSuccess();
+        if (sessionInfo.ceremonyMode === 'closing') playSuccess();
       }
+      if (wantOverlayShown && !prevOverlayShown) {
+        showVerdict(sessionInfo.ceremonyMode);
+      } else if (!wantOverlayShown && prevOverlayShown) {
+        hideVerdict();
+      }
+      lastOverlayShown = wantOverlayShown;
+      // Error alarm: only in verdict+opening, gated by overlay visibility and alarm flag.
+      const alarmShouldPlay = sessionInfo.state === 'verdict'
+        && sessionInfo.ceremonyMode === 'opening'
+        && sessionInfo.verdictOverlayVisible
+        && sessionInfo.errorAlarmActive;
+      if (alarmShouldPlay) startErrorAlarm();
+      else stopErrorAlarm();
       if (sessionInfo.state === 'idle' && prev !== 'idle') {
         hideVerdict();
         scanStartMs = 0;
@@ -666,7 +709,9 @@ function handleMessage(msg) {
     case 'reset':
       clearAllStates();
       hideVerdict();
+      lastOverlayShown = false;
       stopScanLoop();
+      stopErrorAlarm();
       scanStartMs = 0;
       updateHint();
       break;

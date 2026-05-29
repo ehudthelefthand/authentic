@@ -117,7 +117,6 @@
     }
     .success-sub { font-size: 15px; color: #64748b; line-height: 1.6; text-align: center; }
 
-    .reset-link { font-size: 11px; color: #475569; margin-top: 16px; text-decoration: underline; cursor: pointer; }
   </style>
 </head>
 <body oncontextmenu="return false">
@@ -194,7 +193,6 @@
       <div class="fp-hint" id="ping-hint">แตะเพื่อกระพริบจุด</div>
     </div>
 
-    <div class="reset-link" id="reset-link">ไม่ใช่คุณ? เริ่มใหม่</div>
   </div>
 
   <script>
@@ -289,7 +287,6 @@
   const pingRing  = document.getElementById('ping-ring-progress');
   const pingHint  = document.getElementById('ping-hint');
   const mySwatch  = document.getElementById('my-particle-swatch');
-  const resetLink = document.getElementById('reset-link');
 
   const RING_C = 2 * Math.PI * 56;
   function setProgress(el, ratio) { el.style.strokeDashoffset = RING_C * (1 - ratio); }
@@ -332,7 +329,7 @@
       if (s === 'open')          setBanner('คุณสแกนสำเร็จแล้ว', 'success');
       else if (s === 'closed')   setBanner('ปิดรับแล้ว · ยังกระพริบจุดได้นะ', 'success');
       else if (s === 'scanning') setBanner('กำลังประมวลผล...', '');
-      else if (s === 'verdict')  setBanner(verdictText, verdictTone);
+      else if (s === 'verdict')  setBanner(sessionInfo.verdictOverlayVisible ? verdictText : '', sessionInfo.verdictOverlayVisible ? verdictTone : '');
       else                       setBanner('รอสักครู่นะ...');
       // Disable ping during scanning so the moment isn't disrupted.
       pingBtn.disabled = (s === 'scanning') || (Date.now() < pingCooldownUntil);
@@ -360,7 +357,8 @@
       setBanner('กำลังประมวลผล...', '');
     } else if (s === 'verdict') {
       joinView.style.display = 'none';
-      setBanner(verdictText, verdictTone);
+      if (sessionInfo.verdictOverlayVisible) setBanner(verdictText, verdictTone);
+      else setBanner('');
     }
   }
 
@@ -523,11 +521,6 @@
     tickCooldown();
   });
 
-  resetLink.addEventListener('click', () => {
-    if (!confirm('เริ่มใหม่? ข้อมูลการเข้าร่วมของคุณจะหายไป')) return;
-    clearMe();
-    render();
-  });
 
   // ============== Boot ==============
   me = loadMe();

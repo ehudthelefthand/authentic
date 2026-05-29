@@ -43,10 +43,38 @@ states, traversed once per ceremony:
 - **Verdict** — final state. Display shows a large overlay that depends on
   the session's [[ceremony-mode]]: red ERROR / UNAUTHENTIC for `opening`,
   green AUTHENTIC for `closing`. Stays until [[reset]]. Pinging remains
-  enabled.
+  enabled. The overlay itself can be toggled off independently — see
+  [[verdict-overlay]].
 
 Each session has a `sessionId` (bumped on [[reset]]) that mobile clients use
 to detect when their stored identity belongs to a past session.
+
+## Verdict Overlay
+
+The ceremonial ERROR / AUTHENTIC banner drawn on top of the artwork during
+[[verdict]]. Distinct from the [[verdict]] state itself: the Session can
+remain in Verdict while the overlay is hidden, exposing the bare lit
+fingerprint underneath so the artwork can be shown standalone after the
+ceremonial moment has passed.
+
+Visibility is controlled by the [[admin]] via a toggle. Defaults to visible
+each time the Session enters Verdict; [[reset]] clears the toggle back to
+visible. The same visibility applies to the matching banner on the mobile
+page — when the overlay is hidden on the [[display]], the mobile verdict
+banner is hidden too.
+
+## Error Alarm
+
+A continuous looping alarm sound that plays alongside the **opening**-mode
+Verdict Overlay (the red ERROR variant). The **closing**-mode (green
+AUTHENTIC) has no alarm — only a one-shot success chime when Verdict is
+first entered.
+
+Has its own admin toggle, default on each time the Session enters Verdict;
+[[reset]] clears it back to on. The alarm is **gated** by [[verdict-overlay]]
+visibility: hiding the overlay silences the alarm without changing its
+toggle state, so re-showing the overlay resumes the alarm if it was on. The
+alarm toggle is only meaningful while the overlay is visible.
 
 ## Ceremony Mode
 

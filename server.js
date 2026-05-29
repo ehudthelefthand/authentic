@@ -58,6 +58,8 @@ let session = {
   sessionId: newSessionId(),
   state: 'idle', // idle | open | closed | scanning | verdict
   ceremonyMode,
+  verdictOverlayVisible: true,
+  errorAlarmActive: true,
   openedAt: null,
   closedAt: null,
   scanningAt: null,
@@ -94,6 +96,8 @@ function publicSessionInfo() {
     sessionId: session.sessionId,
     state: session.state,
     ceremonyMode: session.ceremonyMode,
+    verdictOverlayVisible: session.verdictOverlayVisible,
+    errorAlarmActive: session.errorAlarmActive,
     participantCount: session.participants.length,
     standbyCount: countStandby(),
     capacity: TOTAL_PARTICLES,
@@ -291,6 +295,30 @@ app.post('/admin/:token/close', requireAdmin, (req, res) => {
   res.json(publicSessionInfo());
 });
 
+app.post('/admin/:token/verdict-overlay', requireAdmin, (req, res) => {
+  if (session.state !== 'verdict') {
+    return res.status(409).json({ error: 'not_verdict', state: session.state });
+  }
+  const visible = req.body && typeof req.body.visible === 'boolean'
+    ? req.body.visible
+    : !session.verdictOverlayVisible;
+  session.verdictOverlayVisible = visible;
+  broadcastSessionState();
+  res.json(publicSessionInfo());
+});
+
+app.post('/admin/:token/error-alarm', requireAdmin, (req, res) => {
+  if (session.state !== 'verdict') {
+    return res.status(409).json({ error: 'not_verdict', state: session.state });
+  }
+  const active = req.body && typeof req.body.active === 'boolean'
+    ? req.body.active
+    : !session.errorAlarmActive;
+  session.errorAlarmActive = active;
+  broadcastSessionState();
+  res.json(publicSessionInfo());
+});
+
 app.post('/admin/:token/fill', requireAdmin, (req, res) => {
   if (session.state !== 'closed') return res.status(409).json({ error: 'not_closed' });
 
@@ -346,6 +374,8 @@ function enterVerdict() {
   session.scanTimer = null;
   session.state = 'verdict';
   session.verdictAt = new Date().toISOString();
+  session.verdictOverlayVisible = true;
+  session.errorAlarmActive = true;
   writeSnapshot();
   broadcastSessionState();
 }
@@ -358,6 +388,8 @@ app.post('/admin/:token/reset', requireAdmin, (req, res) => {
     sessionId: newSessionId(),
     state: 'idle',
     ceremonyMode,  // preserved across reset
+    verdictOverlayVisible: true,
+    errorAlarmActive: true,
     openedAt: null,
     closedAt: null,
     scanningAt: null,
