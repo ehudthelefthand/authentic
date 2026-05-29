@@ -1,0 +1,100 @@
+/* ============================================================
+ * Authentic Camp — Design System
+ * Dark, neon, ceremonial. Latin text in Poppins;
+ * Thai falls back to Sarabun.
+ * ============================================================ */
+
+/* ---- Fonts (self-hosted, latin-only Poppins + Thai-only Sarabun) ---- */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/poppins-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/poppins-500.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/poppins-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Sarabun';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/sarabun-thai-400.woff2') format('woff2');
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'Sarabun';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/sarabun-thai-700.woff2') format('woff2');
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+
+:root {
+  /* ---- Colors (dark neon) ---- */
+  --color-bg:            #0a0a14;
+  --color-surface:       #131325;
+  --color-surface-2:     #1a1a30;
+  --color-text-primary:  #f1f5f9;
+  --color-text-muted:    #94a3b8;
+  --color-text-dim:      #64748b;
+  --color-accent:        #06b6d4;   /* cyan neon */
+  --color-accent-soft:   #67e8f9;
+  --color-accent-glow:   rgba(6, 182, 212, 0.45);
+  --color-danger:        #f43f5e;
+  --color-danger-soft:   rgba(244, 63, 94, 0.18);
+  --color-success:       #10b981;
+  --color-border:        rgba(148, 163, 184, 0.15);
+  --color-border-strong: rgba(148, 163, 184, 0.3);
+
+  /* ---- Typography ---- */
+  --font-family:        'Poppins', 'Sarabun', system-ui, -apple-system, sans-serif;
+  --font-mono:          'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  --font-size-xs:       12px;
+  --font-size-sm:       14px;
+  --font-size-base:     16px;
+  --font-size-lg:       20px;
+  --font-size-xl:       28px;
+  --font-size-2xl:      40px;
+  --font-weight-regular: 400;
+  --font-weight-medium:  500;
+  --font-weight-bold:    700;
+  --line-height-tight:   1.2;
+  --line-height-base:    1.5;
+
+  /* ---- Spacing (4px scale) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  /* ---- Radius ---- */
+  --radius-sm:    4px;
+  --radius-md:    8px;
+  --radius-lg:    16px;
+  --radius-pill:  999px;
+
+  /* ---- Shadows / glow ---- */
+  --glow-accent: 0 0 24px var(--color-accent-glow), 0 0 48px rgba(6, 182, 212, 0.18);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+}

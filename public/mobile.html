@@ -4,23 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Authentic Camp</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles/design-system.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
   <script src="/fingerprint.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #07070f;
-      color: #e2e8f0;
-      font-family: 'Sarabun', sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      font-family: var(--font-family);
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 0 24px 40px;
       overflow-x: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .header { text-align: center; padding: 30px 0 8px; }
@@ -33,16 +36,17 @@
     }
     .camp-sub { font-size: 13px; color: #64748b; line-height: 1.5; }
 
-    #canvas-wrap { position: relative; margin: 18px 0 12px; }
+    #canvas-wrap { position: relative; margin: 18px 0 32px; }
     #canvas-wrap canvas { display: block; border-radius: 50%; }
     .canvas-ring { position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.08); pointer-events: none; }
 
     .state-banner {
       width: 100%; max-width: 320px;
-      text-align: center; font-size: 13px; color: #94a3b8;
-      padding: 10px 14px; border-radius: 10px;
+      text-align: center; font-size: 16px; color: #94a3b8;
+      padding: 12px 16px; border-radius: 10px;
       background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
       margin-bottom: 12px;
+      line-height: 1.4;
     }
     .state-banner.error { color: #fda4af; border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.08); }
     .state-banner.success { color: #a7f3d0; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.06); }
@@ -56,7 +60,7 @@
       width: 100%; background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 12px; padding: 14px 18px;
-      font-family: 'Sarabun', sans-serif; font-size: 18px; color: #f1f5f9;
+      font-family: var(--font-family); font-size: 18px; color: var(--color-text-primary);
       outline: none; transition: border-color 0.2s;
       text-align: center; letter-spacing: 1px;
     }
@@ -92,7 +96,7 @@
     .fp-icon { width: 52px; height: 52px; color: #94a3b8; transition: color 0.2s; }
     .fp-btn:not(:disabled) .fp-icon { color: #c4b5fd; }
     .fp-btn.holding .fp-icon { color: #fff; }
-    .fp-hint { font-size: 12px; color: #475569; letter-spacing: 0.5px; transition: color 0.2s; text-align: center; }
+    .fp-hint { font-size: 15px; color: #475569; letter-spacing: 0.5px; transition: color 0.2s; text-align: center; }
     .fp-hint.active { color: #a78bfa; }
 
     @keyframes fp-pulse {
@@ -104,7 +108,14 @@
 
     .divider { width: 32px; height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0; }
     .success-name { font-size: 18px; font-weight: 600; color: #f1f5f9; }
-    .success-sub { font-size: 13px; color: #64748b; line-height: 1.6; text-align: center; }
+    .my-particle { display: flex; align-items: center; gap: 12px; }
+    .my-particle-label { font-size: 13px; color: var(--color-text-muted); letter-spacing: 1px; }
+    .my-particle-swatch {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #888;
+      box-shadow: 0 0 12px currentColor, inset 0 0 8px rgba(255,255,255,0.15);
+    }
+    .success-sub { font-size: 15px; color: #64748b; line-height: 1.6; text-align: center; }
 
     .reset-link { font-size: 11px; color: #475569; margin-top: 16px; text-decoration: underline; cursor: pointer; }
   </style>
@@ -112,7 +123,7 @@
 <body>
 
   <div class="header">
-    <div class="camp-label">ค่ายโบสถ์</div>
+    <div class="camp-label">Nexus Camp 2026</div>
     <div class="camp-name">AUTHENTIC</div>
     <div class="camp-sub">สะท้อนพระคริสต์ด้วยชีวิตจริง</div>
   </div>
@@ -125,9 +136,6 @@
 
   <!-- Join view (Open + not yet joined) -->
   <div class="form-section" id="join-view" style="display:none">
-    <label class="input-label">ชื่อของคุณ</label>
-    <input type="text" id="name-input" placeholder="พิมพ์ชื่อที่นี่" autocomplete="off" maxlength="30" />
-
     <div class="fp-btn-area">
       <div class="fp-btn-wrap">
         <svg width="0" height="0" style="position:absolute">
@@ -142,7 +150,7 @@
           <circle class="fp-ring-bg" cx="60" cy="60" r="56"/>
           <circle class="fp-ring-progress" cx="60" cy="60" r="56" id="fp-ring-progress"/>
         </svg>
-        <button class="fp-btn" id="fp-btn" disabled>
+        <button class="fp-btn" id="fp-btn">
           <svg class="fp-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="32" cy="31" r="2.2" fill="currentColor" stroke="none"/>
             <path d="M 25 31 a 7 7 0 0 1 14 0" stroke-width="2.3"/>
@@ -153,15 +161,18 @@
           </svg>
         </button>
       </div>
-      <div class="fp-hint" id="fp-hint">พิมพ์ชื่อก่อน</div>
+      <div class="fp-hint active" id="fp-hint">กดค้างเพื่อสแกน</div>
     </div>
   </div>
 
   <!-- Joined view (already submitted) -->
   <div class="form-section" id="joined-view" style="display:none">
-    <div class="success-name" id="joined-name"></div>
+    <div class="my-particle">
+      <span class="my-particle-label">จุดของคุณ</span>
+      <span class="my-particle-swatch" id="my-particle-swatch"></span>
+    </div>
     <div class="divider"></div>
-    <div class="success-sub">fingerprint ของคุณปรากฏบนหน้าจอแล้ว ✦<br/>แตะปุ่มเพื่อ ping จุดของคุณ</div>
+    <div class="success-sub">ลายนิ้วมือของคุณปรากฏบนหน้าจอแล้ว ✦<br/>แตะปุ่มเพื่อกระพริบจุดของคุณ</div>
 
     <div class="fp-btn-area">
       <div class="fp-btn-wrap">
@@ -180,7 +191,7 @@
           </svg>
         </button>
       </div>
-      <div class="fp-hint" id="ping-hint">แตะเพื่อ ping</div>
+      <div class="fp-hint" id="ping-hint">แตะเพื่อกระพริบจุด</div>
     </div>
 
     <div class="reset-link" id="reset-link">ไม่ใช่คุณ? เริ่มใหม่</div>
@@ -271,14 +282,13 @@
   const banner    = document.getElementById('state-banner');
   const joinView  = document.getElementById('join-view');
   const joinedView= document.getElementById('joined-view');
-  const nameInput = document.getElementById('name-input');
   const fpBtn     = document.getElementById('fp-btn');
   const fpHint    = document.getElementById('fp-hint');
   const ringEl    = document.getElementById('fp-ring-progress');
   const pingBtn   = document.getElementById('ping-btn');
   const pingRing  = document.getElementById('ping-ring-progress');
   const pingHint  = document.getElementById('ping-hint');
-  const joinedName= document.getElementById('joined-name');
+  const mySwatch  = document.getElementById('my-particle-swatch');
   const resetLink = document.getElementById('reset-link');
 
   const RING_C = 2 * Math.PI * 56;
@@ -306,14 +316,26 @@
     const s = sessionInfo.state;
     const joined = !!me;
 
+    const verdictText = sessionInfo.ceremonyMode === 'opening'
+      ? 'ERROR · IDENTITY NOT VERIFIED'
+      : 'AUTHENTIC · IDENTITY VERIFIED';
+    const verdictTone = sessionInfo.ceremonyMode === 'opening' ? 'error' : 'success';
+
     if (joined) {
       joinView.style.display = 'none';
       joinedView.style.display = 'flex';
-      joinedName.textContent = me.name;
-      if (s === 'open')   setBanner(`เซสชันเปิดอยู่ · ${sessionInfo.participantCount} / ${sessionInfo.capacity}`, 'success');
-      else if (s === 'closed') setBanner('เซสชันปิดแล้ว · ยังกด ping ได้', 'success');
-      else if (s === 'ended')  setBanner('เซสชันจบแล้ว · ยังกด ping ได้', 'success');
-      else                setBanner('รอเซสชันถัดไป');
+      if (me.color && Array.isArray(me.color)) {
+        const [r, g, b] = me.color;
+        mySwatch.style.background = `rgb(${r}, ${g}, ${b})`;
+        mySwatch.style.color = `rgb(${r}, ${g}, ${b})`;
+      }
+      if (s === 'open')          setBanner('คุณสแกนสำเร็จแล้ว', 'success');
+      else if (s === 'closed')   setBanner('ปิดรับแล้ว · ยังกระพริบจุดได้นะ', 'success');
+      else if (s === 'scanning') setBanner('กำลังประมวลผล...', '');
+      else if (s === 'verdict')  setBanner(verdictText, verdictTone);
+      else                       setBanner('รอสักครู่นะ...');
+      // Disable ping during scanning so the moment isn't disrupted.
+      pingBtn.disabled = (s === 'scanning') || (Date.now() < pingCooldownUntil);
       return;
     }
 
@@ -321,25 +343,35 @@
 
     if (s === 'idle') {
       joinView.style.display = 'none';
-      setBanner('รอเริ่มเซสชัน...');
+      setBanner('รอสักครู่นะ...');
     } else if (s === 'open') {
       if (sessionInfo.participantCount >= sessionInfo.capacity) {
         joinView.style.display = 'none';
-        setBanner('เซสชันเต็มแล้ว ขออภัย', 'error');
+        setBanner('ขออภัย ตอนนี้คนเต็มแล้ว', 'error');
       } else {
         joinView.style.display = 'flex';
-        setBanner(`เซสชันเปิดอยู่ · เหลือ ${sessionInfo.capacity - sessionInfo.participantCount} จุด`, 'success');
+        setBanner('พร้อมสแกนนิ้วได้แล้ว ✨', 'success');
       }
-    } else if (s === 'closed' || s === 'ended') {
+    } else if (s === 'closed') {
       joinView.style.display = 'none';
-      setBanner('เซสชันปิดแล้ว · คุณพลาดเซสชันนี้', 'error');
+      setBanner('ปิดรับสแกนแล้ว ขออภัย', 'error');
+    } else if (s === 'scanning') {
+      joinView.style.display = 'none';
+      setBanner('กำลังประมวลผล...', '');
+    } else if (s === 'verdict') {
+      joinView.style.display = 'none';
+      setBanner(verdictText, verdictTone);
     }
   }
 
   // ============== WebSocket ==============
+  let ws = null;
   function connectWS() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${location.host}`);
+    ws = new WebSocket(`${protocol}//${location.host}`);
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'hello', role: 'mobile', participantId: me?.id || null }));
+    };
     ws.onmessage = ev => {
       try {
         const msg = JSON.parse(ev.data);
@@ -359,7 +391,7 @@
   }
 
   // ============== Hold-to-submit ==============
-  const HOLD_MS = 5000;
+  const HOLD_MS = 3000;
   let holdStart = null, holdRaf = null, submitting = false;
 
   function tickHold() {
@@ -388,13 +420,6 @@
     if (!submitting) fpHint.textContent = 'กดค้างเพื่อสแกน';
   }
 
-  nameInput.addEventListener('input', () => {
-    const name = nameInput.value.trim();
-    fpBtn.disabled = name.length < 1;
-    fpHint.textContent = name.length < 1 ? 'พิมพ์ชื่อก่อน' : 'กดค้างเพื่อสแกน';
-    fpHint.classList.toggle('active', name.length > 0);
-  });
-
   fpBtn.addEventListener('pointerdown', e => { e.preventDefault(); fpBtn.setPointerCapture(e.pointerId); startHold(); });
   fpBtn.addEventListener('pointerup', cancelHold);
   fpBtn.addEventListener('pointercancel', cancelHold);
@@ -403,14 +428,13 @@
   async function doSubmit() {
     if (submitting) return;
     submitting = true;
-    const name = nameInput.value.trim();
     fpBtn.disabled = true;
     fpHint.textContent = 'กำลังส่ง...';
     try {
       const res = await fetch('/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: '{}',
       });
       const data = await res.json();
       if (!res.ok) {
@@ -425,6 +449,8 @@
       }
       me = data;
       saveMe(me);
+      try { ws && ws.readyState === 1 && ws.send(JSON.stringify({ type: 'joined', participantId: me.id })); } catch (e) {}
+      if (navigator.vibrate) navigator.vibrate([20, 40, 80]); // confirm pattern
       render();
     } catch (e) {
       fpBtn.disabled = false;
@@ -446,7 +472,7 @@
     if (remaining <= 0) {
       setProgress(pingRing, 0);
       pingBtn.disabled = false;
-      pingHint.textContent = 'แตะเพื่อ ping';
+      pingHint.textContent = 'แตะเพื่อกระพริบจุด';
       pingHint.classList.add('active');
       return;
     }
@@ -460,9 +486,10 @@
     if (Date.now() < pingCooldownUntil) return;
     pingBtn.disabled = true;
     pingBtn.classList.add('pinged');
+    if (navigator.vibrate) navigator.vibrate(30);
     setTimeout(() => pingBtn.classList.remove('pinged'), 500);
     pingPulseAt = performance.now();
-    pingHint.textContent = 'ส่ง ping...';
+    pingHint.textContent = 'กำลังกระพริบ...';
     try {
       const res = await fetch('/ping', {
         method: 'POST',
@@ -473,7 +500,7 @@
         const data = await res.json();
         pingCooldownUntil = Date.now() + (data.retryMs || PING_COOLDOWN_MS);
       } else if (!res.ok) {
-        pingHint.textContent = 'ping ไม่สำเร็จ';
+        pingHint.textContent = 'กระพริบไม่สำเร็จ';
       } else {
         pingCooldownUntil = Date.now() + PING_COOLDOWN_MS;
       }

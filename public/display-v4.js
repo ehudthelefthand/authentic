@@ -35,6 +35,175 @@ let glowTransition  = 0;
 const GLOW_FADE_MS  = 2500;
 const glowLayers = { 1: true, 2: true, 3: true, 4: true };
 
+// ---- Scanning + verdict ----
+let scanStartMs = 0;          // performance.now() when scanning began
+const SCAN_TOTAL_MS = 6000;   // matches server SCANNING_DURATION_MS
+const SCAN_INTRO_MS = 2000;   // neon reveal intro before the sweep starts
+const SCAN_SWEEP_MS = (SCAN_TOTAL_MS - SCAN_INTRO_MS) / 2; // two passes
+
+// ---- Audio (Web Audio synth, see ADR 0003) ----
+let audioCtx = null;
+let scanLoopNode = null;      // { osc, noise, gain, filter, stop() }
+
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playSubmit() {
+  if (!audioCtx) return;
+  const ctx = audioCtx;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(880, ctx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.06);
+  g.gain.setValueAtTime(0.0001, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.08);
+  o.connect(g).connect(ctx.destination);
+  o.start();
+  o.stop(ctx.currentTime + 0.1);
+}
+
+function startScanLoop() {
+  stopScanLoop();
+  if (!audioCtx) return;
+  const ctx = audioCtx;
+  const o = ctx.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(220, ctx.currentTime);
+  o.frequency.linearRampToValueAtTime(440, ctx.currentTime + 4.0);
+
+  const n = ctx.createBufferSource();
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * 0.3;
+  n.buffer = buf; n.loop = true;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(800, ctx.currentTime);
+  filter.frequency.linearRampToValueAtTime(2200, ctx.currentTime + 4.0);
+  filter.Q.value = 6;
+
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, ctx.currentTime);
+  g.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.25);
+
+  o.connect(filter);
+  n.connect(filter);
+  filter.connect(g).connect(ctx.destination);
+  o.start();
+  n.start();
+  scanLoopNode = { o, n, g, filter };
+}
+
+function stopScanLoop() {
+  if (!scanLoopNode) return;
+  const ctx = audioCtx;
+  const { o, n, g } = scanLoopNode;
+  try {
+    g.gain.cancelScheduledValues(ctx.currentTime);
+    g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
+    o.stop(ctx.currentTime + 0.25);
+    n.stop(ctx.currentTime + 0.25);
+  } catch (e) {}
+  scanLoopNode = null;
+}
+
+function playError() {
+  if (!audioCtx) return;
+  const ctx = audioCtx;
+  const o1 = ctx.createOscillator();
+  const o2 = ctx.createOscillator();
+  o1.type = 'square'; o2.type = 'square';
+  o1.frequency.value = 110;
+  o2.frequency.value = 113; // slight detune
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + 0.02);
+  g.gain.setValueAtTime(0.28, ctx.currentTime + 0.45);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.62);
+  o1.connect(g); o2.connect(g);
+  g.connect(ctx.destination);
+  o1.start(); o2.start();
+  o1.stop(ctx.currentTime + 0.65); o2.stop(ctx.currentTime + 0.65);
+}
+
+function playSuccess() {
+  if (!audioCtx) return;
+  const ctx = audioCtx;
+  const freqs = [523.25, 659.25, 783.99]; // C5 E5 G5
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.3);
+  g.connect(ctx.destination);
+  for (const f of freqs) {
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = f;
+    o.connect(g);
+    o.start();
+    o.stop(ctx.currentTime + 1.35);
+  }
+}
+
+// ---- Verdict overlay (DOM) ----
+function showVerdict(mode) {
+  const el = document.getElementById('verdict-overlay');
+  const title = document.getElementById('verdict-title');
+  const sub = document.getElementById('verdict-sub');
+  el.classList.remove('unauthentic', 'authentic', 'show');
+  if (mode === 'opening') {
+    title.textContent = 'ERROR';
+    sub.textContent = 'IDENTITY NOT VERIFIED';
+    el.classList.add('unauthentic');
+  } else {
+    title.textContent = 'AUTHENTIC';
+    sub.textContent = 'IDENTITY VERIFIED';
+    el.classList.add('authentic');
+  }
+  // force reflow to restart animation
+  void el.offsetWidth;
+  el.classList.add('show');
+}
+
+function hideVerdict() {
+  const el = document.getElementById('verdict-overlay');
+  el.classList.remove('show', 'unauthentic', 'authentic');
+}
+
+function updateHint() {
+  const el = document.getElementById('display-hint');
+  if (!el) return;
+  let text = '';
+  if (totalLit === 0 && sessionInfo) {
+    if (sessionInfo.state === 'open') text = 'รอผู้เข้าร่วมสแกน QR Code...';
+    else if (sessionInfo.state === 'idle') text = 'รอเริ่มเซสชัน';
+  }
+  if (text) {
+    el.textContent = text;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
+function updateReplayBadge() {
+  const el = document.getElementById('replay-badge');
+  if (!el) return;
+  if (replayInfo) {
+    el.textContent = `● REPLAY · ${replayInfo.speed}x`;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
 // ---- helpers ----
 function hexToRgb(hex) {
   const n = parseInt(hex.replace('#', ''), 16);
@@ -393,50 +562,38 @@ const sketch = (p) => {
       pingRings = stillActive;
     }
 
-    // ---- PASS 3: header (BLEND) ----
+    // ---- PASS 2.75: scan line (ADD) ----
+    if (sessionInfo && sessionInfo.state === 'scanning' && scanStartMs > 0) {
+      const elapsed = performance.now() - scanStartMs;
+      if (elapsed >= SCAN_INTRO_MS && elapsed < SCAN_TOTAL_MS) {
+        const sweepElapsed = elapsed - SCAN_INTRO_MS;
+        const passProgress = (sweepElapsed % SCAN_SWEEP_MS) / SCAN_SWEEP_MS;
+        // Sweep top → bottom across the fingerprint bounding box (~80% of canvas)
+        const top    = cy - radius * 1.0;
+        const bottom = cy + radius * 1.0;
+        const lineY  = top + (bottom - top) * passProgress;
+
+        p.blendMode(p.ADD);
+        p.noStroke();
+        // Thin solid line + glow
+        for (let layer = 0; layer < 3; layer++) {
+          const thickness = [44, 16, 4][layer];
+          const alpha     = [16, 60, 200][layer];
+          p.fill(125, 211, 252, alpha);
+          p.rect(cx - radius * 1.15, lineY - thickness / 2, radius * 2.3, thickness);
+        }
+        // Trailing afterimage band
+        const trailHeight = radius * 0.45;
+        for (let i = 1; i <= 8; i++) {
+          const tA = i / 8;
+          p.fill(125, 211, 252, (1 - tA) * 14);
+          p.rect(cx - radius * 1.15, lineY - tA * trailHeight, radius * 2.3, trailHeight / 8);
+        }
+      }
+    }
+
     p.blendMode(p.BLEND);
-    drawHeader(p, t);
   };
-
-  function drawHeader(p, t) {
-    p.textFont('Sarabun, sans-serif');
-    p.textAlign(p.CENTER, p.TOP);
-    p.noStroke();
-
-    p.textSize(26);
-    p.fill(225, 232, 240, 210);
-    p.text('AUTHENTIC', p.width / 2, 22);
-
-    p.textSize(13);
-    p.fill(100, 116, 139, 180);
-    p.text('สะท้อนพระคริสต์ด้วยชีวิตจริง', p.width / 2, 56);
-
-    if (totalLit > 0) {
-      p.textSize(10);
-      p.fill(51, 65, 85, 160);
-      p.text(`${joinedIds.size} คน · ${totalLit} / ${TOTAL_PARTICLES} จุด`, p.width / 2, 78);
-    } else if (sessionInfo && sessionInfo.state === 'open') {
-      const a = 80 + Math.sin(t * 1.3) * 30;
-      p.textSize(13);
-      p.fill(71, 85, 105, a);
-      p.textAlign(p.CENTER, p.BOTTOM);
-      p.text('รอผู้เข้าร่วมสแกน QR Code...', p.width / 2, p.height - 30);
-    } else if (sessionInfo && sessionInfo.state === 'idle') {
-      const a = 60 + Math.sin(t * 0.9) * 20;
-      p.textSize(12);
-      p.fill(71, 85, 105, a);
-      p.textAlign(p.CENTER, p.BOTTOM);
-      p.text('รอเริ่มเซสชัน', p.width / 2, p.height - 30);
-    }
-
-    // Replay badge
-    if (replayInfo) {
-      p.textAlign(p.LEFT, p.TOP);
-      p.textSize(11);
-      p.fill(244, 63, 94, 230);
-      p.text(`● REPLAY · ${replayInfo.speed}x`, 24, 24);
-    }
-  }
 };
 
 // ---- WebSocket ----
@@ -469,11 +626,36 @@ function handleMessage(msg) {
       // Transition to 'open' from anything else → clear-out animation.
       if (sessionInfo.state === 'open' && prev !== 'open') {
         startClearOut();
+        hideVerdict();
       }
+      if (sessionInfo.state === 'scanning' && prev !== 'scanning') {
+        scanStartMs = performance.now();
+        // Audio: small delay so it starts as the sweep begins, not during intro
+        setTimeout(() => {
+          if (sessionInfo && sessionInfo.state === 'scanning') startScanLoop();
+        }, SCAN_INTRO_MS);
+      } else if (prev === 'scanning' && sessionInfo.state !== 'scanning') {
+        stopScanLoop();
+      }
+      if (sessionInfo.state === 'verdict' && prev !== 'verdict') {
+        stopScanLoop();
+        showVerdict(sessionInfo.ceremonyMode);
+        if (sessionInfo.ceremonyMode === 'opening') playError();
+        else playSuccess();
+      }
+      if (sessionInfo.state === 'idle' && prev !== 'idle') {
+        hideVerdict();
+        scanStartMs = 0;
+      }
+      updateHint();
       break;
     }
     case 'new_participant':
-      if (!joinedIds.has(msg.data.id)) applyParticipant(msg.data);
+      if (!joinedIds.has(msg.data.id)) {
+        applyParticipant(msg.data);
+        playSubmit();
+        updateHint();
+      }
       break;
     case 'fill_progress':
       applyFillEntry(msg.data);
@@ -483,23 +665,54 @@ function handleMessage(msg) {
       break;
     case 'reset':
       clearAllStates();
+      hideVerdict();
+      stopScanLoop();
+      scanStartMs = 0;
+      updateHint();
       break;
     case 'replay_start':
       replayInfo = msg.data;
       clearAllStates();
+      updateReplayBadge();
       break;
     case 'replay_event':
       if (msg.data.kind === 'participant') {
         applyParticipant(msg.data.participant);
+        playSubmit();
       } else if (msg.data.kind === 'fill') {
         applyFillEntry(msg.data.fill);
+      } else if (msg.data.kind === 'scan_start') {
+        scanStartMs = performance.now();
+        setTimeout(() => startScanLoop(), SCAN_INTRO_MS);
+      } else if (msg.data.kind === 'verdict') {
+        stopScanLoop();
+        showVerdict(msg.data.ceremonyMode);
+        if (msg.data.ceremonyMode === 'opening') playError(); else playSuccess();
       }
       break;
     case 'replay_end':
       replayInfo = null;
+      stopScanLoop();
+      hideVerdict();
+      scanStartMs = 0;
+      updateReplayBadge();
       break;
   }
 }
 
 // ---- Boot ----
 new p5(sketch);
+
+// Tap-to-start: unlock audio context on first user gesture (ADR 0003)
+(function setupTapToStart() {
+  const overlay = document.getElementById('tap-to-start');
+  if (!overlay) return;
+  const handler = () => {
+    ensureAudio();
+    overlay.classList.add('hidden');
+    overlay.removeEventListener('click', handler);
+    overlay.removeEventListener('touchstart', handler);
+  };
+  overlay.addEventListener('click', handler);
+  overlay.addEventListener('touchstart', handler);
+})();

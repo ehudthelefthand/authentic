@@ -4,15 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Authentic · Admin</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles/design-system.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #07070f; color: #e2e8f0;
-      font-family: 'Sarabun', system-ui, sans-serif;
-      min-height: 100dvh; padding: 28px 32px 60px;
+      background: var(--color-bg); color: var(--color-text-primary);
+      font-family: var(--font-family);
+      min-height: 100dvh; padding: var(--space-7) var(--space-8) 60px;
     }
     h1 { font-size: 22px; font-weight: 700; letter-spacing: 4px; margin-bottom: 4px;
       background: linear-gradient(135deg, #f59e0b, #8b5cf6, #06b6d4);
@@ -37,15 +36,32 @@
     .badge.idle    { background: rgba(100,116,139,0.2); color: #94a3b8; }
     .badge.open    { background: rgba(16,185,129,0.18); color: #6ee7b7; }
     .badge.closed  { background: rgba(245,158,11,0.18); color: #fcd34d; }
-    .badge.ended   { background: rgba(139,92,246,0.2);  color: #c4b5fd; }
+    .badge.scanning { background: rgba(6,182,212,0.2); color: #67e8f9; }
+    .badge.verdict { background: rgba(139,92,246,0.2);  color: #c4b5fd; }
     .badge.replay  { background: rgba(244,63,94,0.18); color: #fda4af; }
 
-    .counts { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #cbd5e1; line-height: 1.7; }
+    .mode-row { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--color-border); }
+    .mode-label { display: block; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-text-dim); margin-bottom: 8px; }
+    .mode-options { display: flex; gap: 8px; flex-wrap: wrap; }
+    .mode-btn {
+      flex: 1; min-width: 0;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--color-border);
+      color: var(--color-text-muted); padding: 10px 14px; border-radius: 10px;
+      font-family: var(--font-family); font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s; letter-spacing: 0.5px;
+    }
+    .mode-btn:hover:not(:disabled) { border-color: var(--color-border-strong); color: var(--color-text-primary); }
+    .mode-btn.active[data-mode="opening"] { background: rgba(244,63,94,0.15); border-color: rgba(244,63,94,0.45); color: #fda4af; }
+    .mode-btn.active[data-mode="closing"] { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.45); color: #6ee7b7; }
+    .mode-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .mode-hint { display: block; font-size: 11px; color: var(--color-text-dim); margin-top: 6px; font-style: italic; }
+
+    .counts { font-family: var(--font-mono); font-size: 13px; color: #cbd5e1; line-height: 1.7; }
     .counts span.k { color: #64748b; }
 
     .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
     button {
-      font-family: 'Sarabun', sans-serif;
+      font-family: var(--font-family);
       background: rgba(124,58,237,0.18); border: 1px solid rgba(124,58,237,0.4);
       color: #e2e8f0; padding: 10px 16px; border-radius: 10px; cursor: pointer;
       font-size: 14px; font-weight: 600; letter-spacing: 0.5px; transition: all 0.15s;
@@ -59,7 +75,7 @@
 
     .qr-wrap { text-align: center; }
     .qr-wrap canvas { background: white; padding: 10px; border-radius: 10px; display: inline-block; }
-    .qr-url { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #94a3b8; margin-top: 12px; word-break: break-all; }
+    .qr-url { font-family: var(--font-mono); font-size: 12px; color: #94a3b8; margin-top: 12px; word-break: break-all; }
 
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th { text-align: left; color: #64748b; font-weight: 600; padding: 8px 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
@@ -91,13 +107,23 @@
       <h2>Session</h2>
       <div class="status-row">
         <span class="badge idle" id="state-badge">—</span>
-        <span id="timer" style="color:#64748b; font-family: 'JetBrains Mono', monospace; font-size: 13px;"></span>
+        <span id="timer" style="color:#64748b; font-family: var(--font-mono); font-size: 13px;"></span>
       </div>
       <div class="counts" id="counts">
         <div><span class="k">participants:</span> <span id="c-part">0</span> / <span id="c-cap">300</span></div>
+        <div><span class="k">standby:</span> <span id="c-standby">0</span></div>
         <div><span class="k">session id:</span> <span id="c-sid">—</span></div>
         <div><span class="k">opened at:</span> <span id="c-open">—</span></div>
         <div><span class="k">closed at:</span> <span id="c-close">—</span></div>
+      </div>
+
+      <div class="mode-row">
+        <span class="mode-label">Ceremony Mode</span>
+        <div class="mode-options">
+          <button class="mode-btn" data-mode="opening" id="mode-opening">Opening · UNAUTHENTIC</button>
+          <button class="mode-btn" data-mode="closing" id="mode-closing">Closing · AUTHENTIC</button>
+        </div>
+        <span class="mode-hint" id="mode-hint">editable while Idle</span>
       </div>
 
       <div class="btn-row" style="margin-top: 18px;">
@@ -177,6 +203,7 @@
   const elBadge = document.getElementById('state-badge');
   const elTimer = document.getElementById('timer');
   const elPart  = document.getElementById('c-part');
+  const elStandby = document.getElementById('c-standby');
   const elCap   = document.getElementById('c-cap');
   const elSid   = document.getElementById('c-sid');
   const elOpen  = document.getElementById('c-open');
@@ -186,6 +213,8 @@
   const btnClose = document.getElementById('btn-close');
   const btnFill  = document.getElementById('btn-fill');
   const btnReset = document.getElementById('btn-reset');
+  const modeBtns = Array.from(document.querySelectorAll('.mode-btn'));
+  const modeHint = document.getElementById('mode-hint');
   const btnStopReplay = document.getElementById('btn-stop-replay');
 
   function fmtTime(iso) {
@@ -200,16 +229,24 @@
     elBadge.textContent = replayInfo ? `REPLAY · ${replayInfo.speed}x` : s;
 
     elPart.textContent = sessionInfo.participantCount;
+    elStandby.textContent = sessionInfo.standbyCount ?? 0;
     elCap.textContent  = sessionInfo.capacity;
     elSid.textContent  = sessionInfo.sessionId;
     elOpen.textContent = fmtTime(sessionInfo.openedAt);
     elClose.textContent = fmtTime(sessionInfo.closedAt);
 
-    btnOpen.disabled  = sessionInfo.state === 'open' || !!replayInfo;
+    btnOpen.disabled  = sessionInfo.state !== 'idle' || !!replayInfo;
     btnClose.disabled = sessionInfo.state !== 'open' || !!replayInfo;
     btnFill.disabled  = sessionInfo.state !== 'closed' || !!replayInfo;
     btnReset.disabled = !!replayInfo;
     btnStopReplay.disabled = !replayInfo;
+
+    const modeEditable = sessionInfo.state === 'idle' && !replayInfo;
+    modeBtns.forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === sessionInfo.ceremonyMode);
+      b.disabled = !modeEditable;
+    });
+    modeHint.textContent = modeEditable ? 'editable while Idle' : `locked · ${sessionInfo.ceremonyMode}`;
   }
 
   function startTimer() {
@@ -251,6 +288,12 @@
     try { await apiPost('/replay/stop'); toast('Replay stopped'); }
     catch (e) { toast(e.message); }
   });
+  modeBtns.forEach(b => b.addEventListener('click', async () => {
+    try {
+      await apiPost('/mode', { mode: b.dataset.mode });
+      toast(`Mode: ${b.dataset.mode}`);
+    } catch (e) { toast(e.message); }
+  }));
 
   // ============== Snapshots ==============
   async function refreshSnapshots() {
@@ -272,7 +315,7 @@
           <td>${fmtTime(s.closedAt)}</td>
           <td>${s.participantCount ?? '—'}</td>
           <td>${s.fillCount ?? 0}</td>
-          <td style="font-family:'JetBrains Mono',monospace; color:#64748b; font-size:11px;">${s.sessionId || '—'}</td>
+          <td style="font-family:var(--font-mono); color:var(--color-text-dim); font-size:var(--font-size-xs);">${s.sessionId || '—'}</td>
           <td class="actions">
             <select data-name="${s.name}" class="speed-sel">
               <option value="1">1x</option>
@@ -321,6 +364,9 @@
   function connectWS() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${protocol}//${location.host}`);
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'hello', role: 'admin' }));
+    };
     ws.onmessage = ev => {
       try {
         const msg = JSON.parse(ev.data);

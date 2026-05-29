@@ -16,6 +16,14 @@ const PALETTE_COUNT   = 8;
 const PING_COOLDOWN_MS = 3000;
 const FILL_DURATION_MS = 8000;
 const STAGGER_MS       = 130;
+const SCANNING_DURATION_MS = 6000; // neon-reveal intro (~2s) + 2 sweep passes (~4s)
+const VALID_CEREMONY_MODES = ['opening', 'closing'];
+
+// Radial bands mirror the ring structure in public/fingerprint.js
+// generateIconFingerprint(): particles are pushed ring 0 (innermost) → ring 7
+// (outermost). Cumulative end-index per ring:
+const RING_END = [16, 40, 72, 110, 152, 198, 248, 300];
+const RING_COUNT = RING_END.length;
 
 // Palette[0] colors mirroring public/fingerprint.js PALETTES (primary hex only).
 const PALETTE_HEX = [
@@ -40,35 +48,59 @@ function newSessionId() {
   return Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
 }
 
+// ceremonyMode is preserved across reset (ADR 0003). Initialised from env so
+// a deployment can boot into a known mode; admin can change it later while idle.
+let ceremonyMode = VALID_CEREMONY_MODES.includes(process.env.CEREMONY_MODE)
+  ? process.env.CEREMONY_MODE
+  : 'opening';
+
 let session = {
   sessionId: newSessionId(),
-  state: 'idle', // idle | open | closed | ended
+  state: 'idle', // idle | open | closed | scanning | verdict
+  ceremonyMode,
   openedAt: null,
   closedAt: null,
-  endedAt: null,
+  scanningAt: null,
+  verdictAt: null,
   participants: [],         // { id, name, particleIndex, paletteIndex, color, joinedAt }
   usedIndices: new Set(),   // particleIndex assignments
   fillSequence: [],         // { particleIndex, paletteIndex, color, filledAt }
-  snapshotPath: null,       // path to the snapshot file for the current closed/ended session
+  snapshotPath: null,       // path to the snapshot file for the current closed/scanning/verdict session
   lastPingAt: new Map(),    // participantId -> ms
   fillTimer: null,
+  scanTimer: null,
 };
 
 // ---- WebSocket ----
+// Track standby: mobile clients that have the page open but have not yet
+// submitted. role is one of: 'mobile' | 'admin' | 'display' | undefined.
+// participantId is set on the ws once the client knows it has joined.
 function broadcast(data) {
   const msg = JSON.stringify(data);
   wss.clients.forEach(c => { if (c.readyState === 1) c.send(msg); });
+}
+
+function countStandby() {
+  let n = 0;
+  for (const c of wss.clients) {
+    if (c.readyState !== 1) continue;
+    if (c._role === 'mobile' && !c._participantId) n++;
+  }
+  return n;
 }
 
 function publicSessionInfo() {
   return {
     sessionId: session.sessionId,
     state: session.state,
+    ceremonyMode: session.ceremonyMode,
     participantCount: session.participants.length,
+    standbyCount: countStandby(),
     capacity: TOTAL_PARTICLES,
     openedAt: session.openedAt,
     closedAt: session.closedAt,
-    endedAt: session.endedAt,
+    scanningAt: session.scanningAt,
+    verdictAt: session.verdictAt,
   };
 }
 
@@ -77,19 +109,45 @@ function broadcastSessionState() {
 }
 
 wss.on('connection', ws => {
+  ws._role = undefined;
+  ws._participantId = null;
   ws.on('error', err => console.error('WS error:', err));
+  ws.on('message', raw => {
+    let msg;
+    try { msg = JSON.parse(raw.toString()); } catch { return; }
+    if (msg.type === 'hello') {
+      ws._role = msg.role;
+      ws._participantId = msg.participantId || null;
+      broadcastSessionState();
+    } else if (msg.type === 'joined') {
+      ws._participantId = msg.participantId || null;
+      broadcastSessionState();
+    }
+  });
+  ws.on('close', () => {
+    if (ws._role === 'mobile') broadcastSessionState();
+  });
   ws.send(JSON.stringify({ type: 'session_state', data: publicSessionInfo() }));
 });
 
 // ---- helpers ----
 function uid() { return crypto.randomBytes(5).toString('hex'); }
 
+// Radial-band assignment: pick the innermost ring with any unused particle,
+// then pick a random unused particle within that ring. See ADR 0002.
 function pickUnusedParticleIndex() {
   if (session.usedIndices.size >= TOTAL_PARTICLES) return null;
-  const start = Math.floor(Math.random() * TOTAL_PARTICLES);
-  for (let i = 0; i < TOTAL_PARTICLES; i++) {
-    const idx = (start + i) % TOTAL_PARTICLES;
-    if (!session.usedIndices.has(idx)) return idx;
+  let ringStart = 0;
+  for (let r = 0; r < RING_COUNT; r++) {
+    const ringEnd = RING_END[r];
+    const available = [];
+    for (let i = ringStart; i < ringEnd; i++) {
+      if (!session.usedIndices.has(i)) available.push(i);
+    }
+    if (available.length > 0) {
+      return available[Math.floor(Math.random() * available.length)];
+    }
+    ringStart = ringEnd;
   }
   return null;
 }
@@ -101,9 +159,11 @@ function pickRandomPalette() {
 function snapshotPayload() {
   return {
     sessionId: session.sessionId,
+    ceremonyMode: session.ceremonyMode,
     openedAt: session.openedAt,
     closedAt: session.closedAt,
-    endedAt: session.endedAt,
+    scanningAt: session.scanningAt,
+    verdictAt: session.verdictAt,
     capacity: TOTAL_PARTICLES,
     participants: session.participants,
     fillSequence: session.fillSequence,
@@ -141,8 +201,6 @@ app.post('/join', (req, res) => {
   if (session.state !== 'open') {
     return res.status(409).json({ error: 'session_not_open', state: session.state });
   }
-  const name = (req.body.name || '').trim();
-  if (!name) return res.status(400).json({ error: 'name_required' });
   if (session.participants.length >= TOTAL_PARTICLES) {
     return res.status(409).json({ error: 'session_full' });
   }
@@ -155,7 +213,6 @@ app.post('/join', (req, res) => {
 
   const participant = {
     id: uid(),
-    name,
     particleIndex,
     paletteIndex,
     color,
@@ -167,11 +224,12 @@ app.post('/join', (req, res) => {
   session.participants.push(participant);
 
   broadcast({ type: 'new_participant', data: participant });
+  broadcastSessionState();
   res.json(participant);
 });
 
 app.post('/ping', (req, res) => {
-  if (!['open', 'closed', 'ended'].includes(session.state)) {
+  if (!['open', 'closed', 'scanning', 'verdict'].includes(session.state)) {
     return res.status(409).json({ error: 'session_inactive' });
   }
   const { participantId } = req.body;
@@ -193,12 +251,28 @@ app.post('/ping', (req, res) => {
 });
 
 // ---- admin routes ----
+app.post('/admin/:token/mode', requireAdmin, (req, res) => {
+  if (session.state !== 'idle') {
+    return res.status(409).json({ error: 'mode_locked', state: session.state });
+  }
+  const mode = req.body && req.body.mode;
+  if (!VALID_CEREMONY_MODES.includes(mode)) {
+    return res.status(400).json({ error: 'invalid_mode' });
+  }
+  session.ceremonyMode = mode;
+  ceremonyMode = mode;
+  broadcastSessionState();
+  res.json(publicSessionInfo());
+});
+
 app.post('/admin/:token/open', requireAdmin, (req, res) => {
   if (session.fillTimer) { clearTimeout(session.fillTimer); session.fillTimer = null; }
+  if (session.scanTimer) { clearTimeout(session.scanTimer); session.scanTimer = null; }
   session.state         = 'open';
   session.openedAt      = new Date().toISOString();
   session.closedAt      = null;
-  session.endedAt       = null;
+  session.scanningAt    = null;
+  session.verdictAt     = null;
   session.participants  = [];
   session.usedIndices   = new Set();
   session.fillSequence  = [];
@@ -231,10 +305,7 @@ app.post('/admin/:token/fill', requireAdmin, (req, res) => {
 
   const totalFill = remaining.length;
   if (totalFill === 0) {
-    session.state = 'ended';
-    session.endedAt = new Date().toISOString();
-    writeSnapshot();
-    broadcastSessionState();
+    enterScanning();
     return res.json(publicSessionInfo());
   }
 
@@ -244,11 +315,8 @@ app.post('/admin/:token/fill', requireAdmin, (req, res) => {
   let i = 0;
   const tick = () => {
     if (i >= remaining.length) {
-      session.state = 'ended';
-      session.endedAt = new Date().toISOString();
-      writeSnapshot();
-      broadcastSessionState();
       session.fillTimer = null;
+      enterScanning();
       return;
     }
     const idx          = remaining[i++];
@@ -265,21 +333,42 @@ app.post('/admin/:token/fill', requireAdmin, (req, res) => {
   res.json({ ok: true, total: totalFill, interval });
 });
 
+function enterScanning() {
+  session.state = 'scanning';
+  session.scanningAt = new Date().toISOString();
+  writeSnapshot();
+  broadcastSessionState();
+  if (session.scanTimer) clearTimeout(session.scanTimer);
+  session.scanTimer = setTimeout(enterVerdict, SCANNING_DURATION_MS);
+}
+
+function enterVerdict() {
+  session.scanTimer = null;
+  session.state = 'verdict';
+  session.verdictAt = new Date().toISOString();
+  writeSnapshot();
+  broadcastSessionState();
+}
+
 app.post('/admin/:token/reset', requireAdmin, (req, res) => {
   if (session.fillTimer) { clearTimeout(session.fillTimer); session.fillTimer = null; }
+  if (session.scanTimer) { clearTimeout(session.scanTimer); session.scanTimer = null; }
   const oldId = session.sessionId;
   session = {
     sessionId: newSessionId(),
     state: 'idle',
+    ceremonyMode,  // preserved across reset
     openedAt: null,
     closedAt: null,
-    endedAt: null,
+    scanningAt: null,
+    verdictAt: null,
     participants: [],
     usedIndices: new Set(),
     fillSequence: [],
     snapshotPath: null,
     lastPingAt: new Map(),
     fillTimer: null,
+    scanTimer: null,
   };
   broadcast({ type: 'reset', data: { previousSessionId: oldId, sessionId: session.sessionId } });
   broadcastSessionState();
@@ -294,8 +383,9 @@ app.get('/admin/:token/snapshots', requireAdmin, (req, res) => {
       return {
         name,
         sessionId: data.sessionId,
+        ceremonyMode: data.ceremonyMode || null,
         closedAt: data.closedAt,
-        endedAt: data.endedAt,
+        verdictAt: data.verdictAt || data.endedAt || null,
         participantCount: (data.participants || []).length,
         fillCount: (data.fillSequence || []).length,
       };
@@ -362,10 +452,25 @@ app.post('/admin/:token/snapshots/:name/replay', requireAdmin, (req, res) => {
     replayState.timers.push(timer);
   });
 
-  const lastDelay = (new Date(events[events.length - 1].at).getTime() - t0) / speed + 1500;
-  replayState.timers.push(setTimeout(() => { stopReplay(); }, lastDelay));
+  const lastEventDelay = (new Date(events[events.length - 1].at).getTime() - t0) / speed;
 
-  res.json({ ok: true, total: events.length, durationMs: lastDelay });
+  // Synthetic scan + verdict — only for snapshots that recorded a ceremonyMode.
+  // Legacy snapshots (no mode) end at the last fill event (ADR 0003).
+  let finalDelay = lastEventDelay + 1500;
+  if (snap.ceremonyMode) {
+    const scanDelay = lastEventDelay + 400 / speed;
+    const verdictDelay = scanDelay + SCANNING_DURATION_MS / speed;
+    replayState.timers.push(setTimeout(() => {
+      broadcast({ type: 'replay_event', data: { kind: 'scan_start' } });
+    }, scanDelay));
+    replayState.timers.push(setTimeout(() => {
+      broadcast({ type: 'replay_event', data: { kind: 'verdict', ceremonyMode: snap.ceremonyMode } });
+    }, verdictDelay));
+    finalDelay = verdictDelay + 4000;
+  }
+  replayState.timers.push(setTimeout(() => { stopReplay(); }, finalDelay));
+
+  res.json({ ok: true, total: events.length, durationMs: finalDelay });
 });
 
 app.post('/admin/:token/replay/stop', requireAdmin, (req, res) => {
@@ -403,6 +508,7 @@ function shutdown(signal) {
   console.log(`\n[${signal}] shutting down...`);
 
   if (session.fillTimer) clearTimeout(session.fillTimer);
+  if (session.scanTimer) clearTimeout(session.scanTimer);
   if (replayState) { replayState.timers.forEach(clearTimeout); replayState = null; }
 
   wss.clients.forEach(c => { try { c.terminate(); } catch {} });
