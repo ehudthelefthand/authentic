@@ -90,8 +90,11 @@ metadata. Used for [[replay]].
 
 ## Replay
 
-Playback of a Snapshot on the display. Admin picks speed (1x / 4x / 10x).
-Shows a "REPLAY" badge so it isn't mistaken for a live session.
+Playback of a Snapshot on the display, covering the **join + [[fill-the-gap]]
+events only**. Ends after the last fill — the [[scanning]] sweep and
+[[verdict]] overlay are intentionally not replayed (see ADR 0004). Admin picks
+speed (1x / 4x / 10x). Shows a "REPLAY" badge so it isn't mistaken for a live
+session.
 
 ## Admin
 

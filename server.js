@@ -454,20 +454,9 @@ app.post('/admin/:token/snapshots/:name/replay', requireAdmin, (req, res) => {
 
   const lastEventDelay = (new Date(events[events.length - 1].at).getTime() - t0) / speed;
 
-  // Synthetic scan + verdict — only for snapshots that recorded a ceremonyMode.
-  // Legacy snapshots (no mode) end at the last fill event (ADR 0003).
-  let finalDelay = lastEventDelay + 1500;
-  if (snap.ceremonyMode) {
-    const scanDelay = lastEventDelay + 400 / speed;
-    const verdictDelay = scanDelay + SCANNING_DURATION_MS / speed;
-    replayState.timers.push(setTimeout(() => {
-      broadcast({ type: 'replay_event', data: { kind: 'scan_start' } });
-    }, scanDelay));
-    replayState.timers.push(setTimeout(() => {
-      broadcast({ type: 'replay_event', data: { kind: 'verdict', ceremonyMode: snap.ceremonyMode } });
-    }, verdictDelay));
-    finalDelay = verdictDelay + 4000;
-  }
+  // Replay covers join + fill only. Scan sweep and verdict are intentionally
+  // omitted — see ADR 0004.
+  const finalDelay = lastEventDelay + 1500;
   replayState.timers.push(setTimeout(() => { stopReplay(); }, finalDelay));
 
   res.json({ ok: true, total: events.length, durationMs: finalDelay });

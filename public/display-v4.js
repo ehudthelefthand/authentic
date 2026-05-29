@@ -681,13 +681,6 @@ function handleMessage(msg) {
         playSubmit();
       } else if (msg.data.kind === 'fill') {
         applyFillEntry(msg.data.fill);
-      } else if (msg.data.kind === 'scan_start') {
-        scanStartMs = performance.now();
-        setTimeout(() => startScanLoop(), SCAN_INTRO_MS);
-      } else if (msg.data.kind === 'verdict') {
-        stopScanLoop();
-        showVerdict(msg.data.ceremonyMode);
-        if (msg.data.ceremonyMode === 'opening') playError(); else playSuccess();
       }
       break;
     case 'replay_end':
