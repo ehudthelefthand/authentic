@@ -38,9 +38,9 @@ const glowLayers = { 1: true, 2: true, 3: true, 4: true };
 
 // ---- Scanning + verdict ----
 let scanStartMs = 0;          // performance.now() when scanning began
-const SCAN_TOTAL_MS = 6000;   // matches server SCANNING_DURATION_MS
+const SCAN_TOTAL_MS = 8000;   // matches server SCANNING_DURATION_MS
 const SCAN_INTRO_MS = 2000;   // neon reveal intro before the sweep starts
-const SCAN_SWEEP_MS = (SCAN_TOTAL_MS - SCAN_INTRO_MS) / 2; // two passes
+const SCAN_SWEEP_MS = (SCAN_TOTAL_MS - SCAN_INTRO_MS) / 3; // three passes
 
 // ---- Audio (synth + theme dispatch via /sounds.js, see ADR 0003) ----
 function ensureAudio() { return window.Sounds.ensureAudio(); }
