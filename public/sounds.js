@@ -183,9 +183,12 @@
       schedulePulse(g, 0.28);
       return { stop() {
         try {
-          g.gain.cancelScheduledValues(ctx.currentTime);
-          g.gain.setValueAtTime(0.0001, ctx.currentTime);
-          o1.stop(ctx.currentTime + 0.05); o2.stop(ctx.currentTime + 0.05);
+          const now = ctx.currentTime;
+          const v = Math.max(0.0001, g.gain.value);
+          g.gain.cancelScheduledValues(now);
+          g.gain.setValueAtTime(v, now);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+          o1.stop(now + 0.85); o2.stop(now + 0.85);
         } catch (e) {}
       }};
     },
@@ -206,9 +209,12 @@
       schedulePulse(g, 0.34);
       return { stop() {
         try {
-          g.gain.cancelScheduledValues(ctx.currentTime);
-          g.gain.setValueAtTime(0.0001, ctx.currentTime);
-          o1.stop(ctx.currentTime + 0.05); o2.stop(ctx.currentTime + 0.05);
+          const now = ctx.currentTime;
+          const v = Math.max(0.0001, g.gain.value);
+          g.gain.cancelScheduledValues(now);
+          g.gain.setValueAtTime(v, now);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+          o1.stop(now + 0.85); o2.stop(now + 0.85);
         } catch (e) {}
       }};
     },
@@ -231,9 +237,12 @@
       schedulePulse(g, 0.26);
       return { stop() {
         try {
-          g.gain.cancelScheduledValues(ctx.currentTime);
-          g.gain.setValueAtTime(0.0001, ctx.currentTime);
-          o.stop(ctx.currentTime + 0.05);
+          const now = ctx.currentTime;
+          const v = Math.max(0.0001, g.gain.value);
+          g.gain.cancelScheduledValues(now);
+          g.gain.setValueAtTime(v, now);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+          o.stop(now + 0.85);
         } catch (e) {}
       }};
     },
