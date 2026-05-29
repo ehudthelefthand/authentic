@@ -120,7 +120,7 @@
     .reset-link { font-size: 11px; color: #475569; margin-top: 16px; text-decoration: underline; cursor: pointer; }
   </style>
 </head>
-<body>
+<body oncontextmenu="return false">
 
   <div class="header">
     <div class="camp-label">Nexus Camp 2026</div>
@@ -424,6 +424,19 @@
   fpBtn.addEventListener('pointerup', cancelHold);
   fpBtn.addEventListener('pointercancel', cancelHold);
   fpBtn.addEventListener('pointerleave', cancelHold);
+
+  // Suppress browser context menu on long-press (mac touchpad force-touch,
+  // mobile long-press) — the app is interactive, not a document.
+  // Capture phase + window-level so we catch it before anything else can run.
+  window.addEventListener('contextmenu', e => {
+    console.log('[ctx] caught contextmenu on', e.target.tagName, e.target.id || e.target.className);
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }, true);
+  // Also Mac trackpad force-touch fires these:
+  window.addEventListener('webkitmouseforcewillbegin', e => e.preventDefault(), true);
+  window.addEventListener('webkitmouseforcedown',      e => e.preventDefault(), true);
 
   async function doSubmit() {
     if (submitting) return;
