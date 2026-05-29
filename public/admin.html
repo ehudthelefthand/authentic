@@ -6,6 +6,7 @@
   <title>Authentic · Admin</title>
   <link rel="stylesheet" href="/styles/design-system.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="/sounds.js"></script>
   <style>
     *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -148,6 +149,34 @@
       <div class="qr-url" id="qr-url"></div>
     </div>
 
+    <!-- Sound Theme -->
+    <div class="card" style="grid-column: 1 / -1;">
+      <h2>Sound Theme</h2>
+      <div class="mode-row" style="margin-top: 6px;">
+        <span class="mode-label">Global preset</span>
+        <div class="mode-options">
+          <button class="mode-btn theme-btn" data-theme="scifi">Sci-Fi</button>
+          <button class="mode-btn theme-btn" data-theme="organic">Organic</button>
+          <button class="mode-btn theme-btn" data-theme="retro">Retro-arcade</button>
+        </div>
+        <span class="mode-hint">applies to all moments unless overridden</span>
+      </div>
+      <table style="margin-top: 14px;">
+        <thead>
+          <tr><th>Moment</th><th>Theme</th><th></th></tr>
+        </thead>
+        <tbody id="sound-body">
+          <tr data-moment="submit">      <td>Submit</td>       <td></td><td class="actions"></td></tr>
+          <tr data-moment="scan">        <td>Scan loop</td>    <td></td><td class="actions"></td></tr>
+          <tr data-moment="errorAlarm">  <td>Error alarm</td>   <td></td><td class="actions"></td></tr>
+          <tr data-moment="success">     <td>Success chime</td> <td></td><td class="actions"></td></tr>
+        </tbody>
+      </table>
+      <div class="mode-hint" style="margin-top: 8px;">
+        Test plays here (admin browser). Loop tests auto-stop after a few seconds.
+      </div>
+    </div>
+
     <!-- Snapshots -->
     <div class="card" style="grid-column: 1 / -1;">
       <h2>Snapshots</h2>
@@ -270,7 +299,106 @@
       b.disabled = !modeEditable;
     });
     modeHint.textContent = modeEditable ? 'editable while Idle' : `locked · ${sessionInfo.ceremonyMode}`;
+    renderSoundTheme();
   }
+
+  // ============== Sound theme ==============
+  const THEMES = [
+    { id: 'scifi',   label: 'Sci-Fi' },
+    { id: 'organic', label: 'Organic' },
+    { id: 'retro',   label: 'Retro-arcade' },
+  ];
+  const SOUND_MOMENTS_UI = ['submit', 'scan', 'errorAlarm', 'success'];
+  const LOOP_MOMENTS = new Set(['scan', 'errorAlarm']);
+  let soundRowsInit = false;
+
+  function renderSoundTheme() {
+    if (!sessionInfo || !sessionInfo.soundTheme) return;
+    const cfg = sessionInfo.soundTheme;
+    document.querySelectorAll('.theme-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.theme === cfg.global);
+    });
+    // Map global theme to opening/closing styles already used by .mode-btn.
+    // Reuse: scifi=opening (purple-ish via .mode-btn default), no .active variant for theme — use a generic active style.
+    // We'll piggyback on .mode-btn .active rule by adding data-mode.
+    document.querySelectorAll('.theme-btn').forEach(b => {
+      // Ensure visible active state without ceremony-mode colors.
+      if (b.classList.contains('active')) {
+        b.style.borderColor = 'rgba(139,92,246,0.6)';
+        b.style.background = 'rgba(139,92,246,0.18)';
+        b.style.color = '#c4b5fd';
+      } else {
+        b.style.borderColor = '';
+        b.style.background = '';
+        b.style.color = '';
+      }
+    });
+    if (!soundRowsInit) initSoundRows();
+    for (const m of SOUND_MOMENTS_UI) {
+      const row = document.querySelector(`#sound-body tr[data-moment="${m}"]`);
+      if (!row) continue;
+      const sel = row.querySelector('select');
+      sel.value = cfg[m] === null || cfg[m] === undefined ? '' : cfg[m];
+    }
+  }
+
+  function initSoundRows() {
+    soundRowsInit = true;
+    for (const m of SOUND_MOMENTS_UI) {
+      const row = document.querySelector(`#sound-body tr[data-moment="${m}"]`);
+      const cells = row.querySelectorAll('td');
+      const selCell = cells[1];
+      const actCell = cells[2];
+      const sel = document.createElement('select');
+      const optUse = document.createElement('option');
+      optUse.value = ''; optUse.textContent = 'Use global preset';
+      sel.appendChild(optUse);
+      for (const t of THEMES) {
+        const opt = document.createElement('option');
+        opt.value = t.id; opt.textContent = t.label;
+        sel.appendChild(opt);
+      }
+      sel.addEventListener('change', async () => {
+        const body = {}; body[m] = sel.value === '' ? null : sel.value;
+        try { await apiPost('/sound-theme', body); toast(`${m}: ${sel.value || 'global'}`); }
+        catch (e) { toast(e.message); }
+      });
+      selCell.appendChild(sel);
+      const btn = document.createElement('button');
+      btn.textContent = '🔊 Test';
+      btn.style.padding = '5px 10px'; btn.style.fontSize = '12px';
+      btn.addEventListener('click', () => testSound(m));
+      actCell.appendChild(btn);
+    }
+  }
+
+  function resolvedTheme(moment) {
+    const cfg = sessionInfo && sessionInfo.soundTheme;
+    if (!cfg) return 'scifi';
+    return cfg[moment] || cfg.global || 'scifi';
+  }
+
+  function testSound(moment) {
+    window.Sounds.ensureAudio();
+    const theme = resolvedTheme(moment);
+    if (moment === 'submit') window.Sounds.playSubmit(theme);
+    else if (moment === 'success') window.Sounds.playSuccess(theme);
+    else if (moment === 'scan') {
+      window.Sounds.startScanLoop(theme);
+      setTimeout(() => window.Sounds.stopScanLoop(), 4000);
+    } else if (moment === 'errorAlarm') {
+      window.Sounds.startErrorAlarm(theme);
+      setTimeout(() => window.Sounds.stopErrorAlarm(), 4500);
+    }
+  }
+
+  // Global preset clicks
+  document.querySelectorAll('.theme-btn').forEach(b => {
+    b.addEventListener('click', async () => {
+      try { await apiPost('/sound-theme', { global: b.dataset.theme }); toast(`Global theme: ${b.dataset.theme}`); }
+      catch (e) { toast(e.message); }
+    });
+  });
 
   function startTimer() {
     if (timerRaf) return;

@@ -42,143 +42,17 @@ const SCAN_TOTAL_MS = 6000;   // matches server SCANNING_DURATION_MS
 const SCAN_INTRO_MS = 2000;   // neon reveal intro before the sweep starts
 const SCAN_SWEEP_MS = (SCAN_TOTAL_MS - SCAN_INTRO_MS) / 2; // two passes
 
-// ---- Audio (Web Audio synth, see ADR 0003) ----
-let audioCtx = null;
-let scanLoopNode = null;      // { osc, noise, gain, filter, stop() }
-
-function ensureAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
+// ---- Audio (synth + theme dispatch via /sounds.js, see ADR 0003) ----
+function ensureAudio() { return window.Sounds.ensureAudio(); }
+function themeFor(moment) {
+  return window.Sounds.resolve(sessionInfo && sessionInfo.soundTheme, moment);
 }
-
-function playSubmit() {
-  if (!audioCtx) return;
-  const ctx = audioCtx;
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-  o.type = 'sine';
-  o.frequency.setValueAtTime(880, ctx.currentTime);
-  o.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.06);
-  g.gain.setValueAtTime(0.0001, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.08);
-  o.connect(g).connect(ctx.destination);
-  o.start();
-  o.stop(ctx.currentTime + 0.1);
-}
-
-function startScanLoop() {
-  stopScanLoop();
-  if (!audioCtx) return;
-  const ctx = audioCtx;
-  const o = ctx.createOscillator();
-  o.type = 'sawtooth';
-  o.frequency.setValueAtTime(220, ctx.currentTime);
-  o.frequency.linearRampToValueAtTime(440, ctx.currentTime + 4.0);
-
-  const n = ctx.createBufferSource();
-  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
-  const ch = buf.getChannelData(0);
-  for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * 0.3;
-  n.buffer = buf; n.loop = true;
-
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.setValueAtTime(800, ctx.currentTime);
-  filter.frequency.linearRampToValueAtTime(2200, ctx.currentTime + 4.0);
-  filter.Q.value = 6;
-
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.0001, ctx.currentTime);
-  g.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.25);
-
-  o.connect(filter);
-  n.connect(filter);
-  filter.connect(g).connect(ctx.destination);
-  o.start();
-  n.start();
-  scanLoopNode = { o, n, g, filter };
-}
-
-function stopScanLoop() {
-  if (!scanLoopNode) return;
-  const ctx = audioCtx;
-  const { o, n, g } = scanLoopNode;
-  try {
-    g.gain.cancelScheduledValues(ctx.currentTime);
-    g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
-    o.stop(ctx.currentTime + 0.25);
-    n.stop(ctx.currentTime + 0.25);
-  } catch (e) {}
-  scanLoopNode = null;
-}
-
-// Error alarm: looping short buzzes ("แอด ๆ ๆ ๆ"). Scheduled entirely on the
-// Web Audio clock — one pair of square oscillators run continuously, a gain
-// envelope chops them into pulses. start/stop are idempotent.
-let alarmNode = null;
-const ALARM_PERIOD = 2.0;   // seconds per pulse (1s beep + 1s gap)
-const ALARM_ON     = 1.0;   // audible portion of each pulse
-const ALARM_PEAK   = 0.28;
-function startErrorAlarm() {
-  if (alarmNode || !audioCtx) return;
-  const ctx = audioCtx;
-  const o1 = ctx.createOscillator();
-  const o2 = ctx.createOscillator();
-  o1.type = 'square'; o2.type = 'square';
-  o1.frequency.value = 110;
-  o2.frequency.value = 113;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.0001, ctx.currentTime);
-  o1.connect(g); o2.connect(g);
-  g.connect(ctx.destination);
-  o1.start(); o2.start();
-  // Schedule a few minutes of pulses upfront; if the alarm runs past that we
-  // can reschedule, but in practice the ceremony is shorter than this window.
-  const pulses = Math.ceil((10 * 60) / ALARM_PERIOD); // 10 minutes
-  let t = ctx.currentTime + 0.01;
-  for (let i = 0; i < pulses; i++) {
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(ALARM_PEAK, t + 0.008);
-    g.gain.setValueAtTime(ALARM_PEAK, t + ALARM_ON - 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + ALARM_ON);
-    t += ALARM_PERIOD;
-  }
-  alarmNode = { o1, o2, g };
-}
-function stopErrorAlarm() {
-  if (!alarmNode) return;
-  const ctx = audioCtx;
-  const { o1, o2, g } = alarmNode;
-  try {
-    g.gain.cancelScheduledValues(ctx.currentTime);
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    o1.stop(ctx.currentTime + 0.05);
-    o2.stop(ctx.currentTime + 0.05);
-  } catch (e) {}
-  alarmNode = null;
-}
-
-function playSuccess() {
-  if (!audioCtx) return;
-  const ctx = audioCtx;
-  const freqs = [523.25, 659.25, 783.99]; // C5 E5 G5
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.0001, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.05);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 3.0);
-  g.connect(ctx.destination);
-  for (const f of freqs) {
-    const o = ctx.createOscillator();
-    o.type = 'sine';
-    o.frequency.value = f;
-    o.connect(g);
-    o.start();
-    o.stop(ctx.currentTime + 3.05);
-  }
-}
+function playSubmit()      { window.Sounds.playSubmit(themeFor('submit')); }
+function startScanLoop()   { window.Sounds.startScanLoop(themeFor('scan')); }
+function stopScanLoop()    { window.Sounds.stopScanLoop(); }
+function startErrorAlarm() { window.Sounds.startErrorAlarm(themeFor('errorAlarm')); }
+function stopErrorAlarm()  { window.Sounds.stopErrorAlarm(); }
+function playSuccess()     { window.Sounds.playSuccess(themeFor('success')); }
 
 // ---- Verdict overlay (DOM) ----
 function showVerdict(mode) {

@@ -18,6 +18,24 @@ const FILL_DURATION_MS = 8000;
 const STAGGER_MS       = 130;
 const SCANNING_DURATION_MS = 6000; // neon-reveal intro (~2s) + 2 sweep passes (~4s)
 const VALID_CEREMONY_MODES = ['opening', 'closing'];
+const VALID_SOUND_THEMES = ['scifi', 'organic', 'retro'];
+const SOUND_MOMENTS = ['submit', 'scan', 'errorAlarm', 'success'];
+
+function envTheme(name, fallback) {
+  const v = process.env[name];
+  return VALID_SOUND_THEMES.includes(v) ? v : fallback;
+}
+function envOverride(name) {
+  const v = process.env[name];
+  return VALID_SOUND_THEMES.includes(v) ? v : null;
+}
+const soundTheme = {
+  global:     envTheme('SOUND_THEME', 'scifi'),
+  submit:     envOverride('SOUND_SUBMIT'),
+  scan:       envOverride('SOUND_SCAN'),
+  errorAlarm: envOverride('SOUND_ERROR_ALARM'),
+  success:    envOverride('SOUND_SUCCESS'),
+};
 
 // Radial bands mirror the ring structure in public/fingerprint.js
 // generateIconFingerprint(): particles are pushed ring 0 (innermost) → ring 7
@@ -98,6 +116,7 @@ function publicSessionInfo() {
     ceremonyMode: session.ceremonyMode,
     verdictOverlayVisible: session.verdictOverlayVisible,
     errorAlarmActive: session.errorAlarmActive,
+    soundTheme: { ...soundTheme },
     participantCount: session.participants.length,
     standbyCount: countStandby(),
     capacity: TOTAL_PARTICLES,
@@ -303,6 +322,27 @@ app.post('/admin/:token/verdict-overlay', requireAdmin, (req, res) => {
     ? req.body.visible
     : !session.verdictOverlayVisible;
   session.verdictOverlayVisible = visible;
+  broadcastSessionState();
+  res.json(publicSessionInfo());
+});
+
+app.post('/admin/:token/sound-theme', requireAdmin, (req, res) => {
+  const body = req.body || {};
+  if ('global' in body) {
+    if (!VALID_SOUND_THEMES.includes(body.global)) {
+      return res.status(400).json({ error: 'invalid_theme' });
+    }
+    soundTheme.global = body.global;
+  }
+  for (const m of SOUND_MOMENTS) {
+    if (!(m in body)) continue;
+    const v = body[m];
+    if (v === null) { soundTheme[m] = null; continue; }
+    if (!VALID_SOUND_THEMES.includes(v)) {
+      return res.status(400).json({ error: 'invalid_theme', moment: m });
+    }
+    soundTheme[m] = v;
+  }
   broadcastSessionState();
   res.json(publicSessionInfo());
 });

@@ -124,6 +124,29 @@ events only**. Ends after the last fill — the [[scanning]] sweep and
 speed (1x / 4x / 10x). Shows a "REPLAY" badge so it isn't mistaken for a live
 session.
 
+## Sound Theme
+
+The audible character of the four moments on the [[display]] that play
+sound:
+
+- **Submit** — short tone when a Participant joins
+- **Scan** — looping sweep during [[scanning]]
+- **Error Alarm** — looping pulse during opening-mode [[verdict]] (see
+  [[error-alarm]])
+- **Success Chime** — one-shot bell when closing-mode [[verdict]] is entered
+
+Three themes are available — **Sci-Fi**, **Organic**, **Retro-arcade** —
+each providing one variant per moment. The [[admin]] picks a global theme
+that applies to all four moments by default, and may override individual
+moments to a different theme.
+
+Settable from the admin console at any time (not locked to Idle). Changes
+take effect from the next time each moment fires — sounds already playing
+(such as the Scan loop or Error Alarm) finish in their current theme and
+adopt the new one on the next start. Like [[ceremony-mode]], the theme
+config is held in memory and initialised from env vars on boot; [[reset]]
+preserves it.
+
 ## Admin
 
 The person operating the event. Reaches the admin screen via a magic URL
